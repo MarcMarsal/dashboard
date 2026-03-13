@@ -179,9 +179,6 @@ async function processSignal(signal, config) {
     [signal.symbol, signal.timeframe, fourthCandle.timestamp]
   );
 
-  let touchedTP = false;
-  let touchedSL = false;
-
   for (const candle of nextCandles.rows) {
     const hitTP =
       tipo === "MS"
@@ -235,5 +232,7 @@ async function processSignal(signal, config) {
     touchedTP: false,
     touchedSL: false
   };
+}
+
 }
 
