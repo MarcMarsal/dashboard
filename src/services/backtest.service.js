@@ -117,12 +117,12 @@ export async function executeBacktest(config) {
 async function processSignal(signal, config) {
   const { retracement, tp, slMode } = config;
 
-  // 🔥 Normalització del tipus (MS_V → MS, ES_V → ES)
+  // 1. Normalitzar tipus
   let tipo = signal.tipo;
   if (tipo.startsWith("MS")) tipo = "MS";
   if (tipo.startsWith("ES")) tipo = "ES";
 
-  // 1. Tercera vela
+  // 2. Tercera vela
   const third = await db.query(
     `SELECT * FROM candles
      WHERE symbol = $1 AND timeframe = $2 AND timestamp = $3`,
@@ -131,32 +131,42 @@ async function processSignal(signal, config) {
   if (!third.rows.length) return null;
   const thirdCandle = third.rows[0];
 
-  // 2. Quarta vela
+  // 3. Quarta vela tolerant (no exacta)
   const interval = timeframeToSeconds(signal.timeframe) * 1000;
+
   const fourth = await db.query(
     `SELECT * FROM candles
-     WHERE symbol = $1 AND timeframe = $2 AND timestamp = $3`,
-    [signal.symbol, signal.timeframe, signal.timestamp + interval]
+     WHERE symbol = $1 AND timeframe = $2 
+       AND timestamp > $3 
+       AND timestamp <= $3 + $4
+     ORDER BY timestamp ASC
+     LIMIT 1`,
+    [signal.symbol, signal.timeframe, signal.timestamp, interval]
   );
   if (!fourth.rows.length) return null;
   const fourthCandle = fourth.rows[0];
 
-  // 3. Entrada
+  // 4. Cos i retracement
   const body = Math.abs(thirdCandle.close - thirdCandle.open);
   const retr = body * (retracement / 100);
 
-  const entry =
-    tipo === "MS"
-      ? thirdCandle.close - retr
-      : thirdCandle.close + retr;
+  // 5. Entrada CORRECTA segons MS_V / ES_V
+  let entry;
+  if (tipo === "MS") {
+    // Entrada LONG: retracement des del LOW
+    entry = thirdCandle.low + retr;
+  } else {
+    // Entrada SHORT: retracement des del HIGH
+    entry = thirdCandle.high - retr;
+  }
 
-  // 4. Comprovar si la quarta vela toca l'entrada
+  // 6. Comprovar si la quarta vela toca l’entrada
   const touchesEntry =
     fourthCandle.low <= entry && fourthCandle.high >= entry;
 
   if (!touchesEntry) return null;
 
-  // 5. TP i SL
+  // 7. TP i SL
   const tpPrice =
     tipo === "MS"
       ? entry * (1 + tp / 100)
@@ -171,13 +181,16 @@ async function processSignal(signal, config) {
         ? thirdCandle.low
         : thirdCandle.high;
 
-  // 6. Veles següents
+  // 8. Veles següents
   const nextCandles = await db.query(
     `SELECT * FROM candles
      WHERE symbol = $1 AND timeframe = $2 AND timestamp > $3
      ORDER BY timestamp ASC`,
     [signal.symbol, signal.timeframe, fourthCandle.timestamp]
   );
+
+  let touchedTP = false;
+  let touchedSL = false;
 
   for (const candle of nextCandles.rows) {
     const hitTP =
@@ -224,6 +237,7 @@ async function processSignal(signal, config) {
     }
   }
 
+  // Si no toca res → neutral
   return {
     entry,
     tp: tpPrice,
@@ -233,4 +247,3 @@ async function processSignal(signal, config) {
     touchedSL: false
   };
 }
-
