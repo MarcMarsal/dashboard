@@ -234,5 +234,3 @@ async function processSignal(signal, config) {
   };
 }
 
-}
-
