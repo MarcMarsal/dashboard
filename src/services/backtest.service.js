@@ -119,8 +119,8 @@ async function processSignal(signal, config) {
 
   // 1. Normalitzar tipus
   let tipo = signal.tipo;
-  if (tipo.startsWith("MS")) tipo = "MS";
-  if (tipo.startsWith("ES")) tipo = "ES";
+  if (tipo.startsWith("MS")) tipo = "MS"; // LONG
+  if (tipo.startsWith("ES")) tipo = "ES"; // SHORT
 
   // 2. Tercera vela
   const third = await db.query(
@@ -131,13 +131,13 @@ async function processSignal(signal, config) {
   if (!third.rows.length) return null;
   const thirdCandle = third.rows[0];
 
-  // 3. Quarta vela tolerant (no exacta)
+  // 3. Quarta vela tolerant
   const interval = timeframeToSeconds(signal.timeframe) * 1000;
 
   const fourth = await db.query(
     `SELECT * FROM candles
-     WHERE symbol = $1 AND timeframe = $2 
-       AND timestamp > $3 
+     WHERE symbol = $1 AND timeframe = $2
+       AND timestamp > $3
        AND timestamp <= $3 + $4
      ORDER BY timestamp ASC
      LIMIT 1`,
@@ -150,14 +150,14 @@ async function processSignal(signal, config) {
   const body = Math.abs(thirdCandle.close - thirdCandle.open);
   const retr = body * (retracement / 100);
 
-  // 5. Entrada CORRECTA segons MS_V / ES_V
+  // 5. Entrada EXACTA segons la teva fórmula
   let entry;
   if (tipo === "MS") {
-    // Entrada LONG: retracement des del LOW
-    entry = thirdCandle.low + retr;
+    // LONG → close - retracement
+    entry = thirdCandle.close - retr;
   } else {
-    // Entrada SHORT: retracement des del HIGH
-    entry = thirdCandle.high - retr;
+    // SHORT → close + retracement
+    entry = thirdCandle.close + retr;
   }
 
   // 6. Comprovar si la quarta vela toca l’entrada
@@ -188,9 +188,6 @@ async function processSignal(signal, config) {
      ORDER BY timestamp ASC`,
     [signal.symbol, signal.timeframe, fourthCandle.timestamp]
   );
-
-  let touchedTP = false;
-  let touchedSL = false;
 
   for (const candle of nextCandles.rows) {
     const hitTP =
@@ -237,7 +234,7 @@ async function processSignal(signal, config) {
     }
   }
 
-  // Si no toca res → neutral
+  // 9. Si no toca res → neutral
   return {
     entry,
     tp: tpPrice,
