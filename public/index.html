@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Dashboard Backtest</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    h1 { margin-bottom: 10px; }
+    #summary { margin-bottom: 20px; }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Resultats del Backtest</h1>
+
+  <button onclick="runBacktest()">Executar Backtest</button>
+
+  <h2>Resum</h2>
+  <div id="summary">Carregant...</div>
+
+  <h2>Gràfic Win / Loss / Neutral</h2>
+  <canvas id="pieChart" width="300" height="300"></canvas>
+
+  <script>
+    let chart;
+
+    async function loadStats() {
+      const res = await fetch("/backtest/stats");
+      const data = await res.json();
+      const s = data.stats;
+
+      document.getElementById("summary").innerHTML = `
+        <strong>Total:</strong> ${s.total}<br>
+        <strong>Wins:</strong> ${s.wins}<br>
+        <strong>Losses:</strong> ${s.losses}<br>
+        <strong>Neutrals:</strong> ${s.neutrals}<br>
+        <strong>Winrate:</strong> ${s.winrate}%
+      `;
+
+      if (chart) chart.destroy();
+
+      chart = new Chart(document.getElementById("pieChart"), {
+        type: "pie",
+        data: {
+          labels: ["Wins", "Losses", "Neutrals"],
+          datasets: [{
+            data: [s.wins, s.losses, s.neutrals],
+            backgroundColor: ["#4caf50", "#f44336", "#9e9e9e"]
+          }]
+        }
+      });
+    }
+
+    async function runBacktest() {
+      await fetch("/backtest/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          symbol: "BTCUSDT",
+          timeframe: "15m",
+          period: "1d",
+          retracement: 25,
+          tp: 0.6,
+          slMode: "thirdCandle"
+        })
+      });
+
+      loadStats();
+    }
+
+    loadStats();
+  </script>
+
+</body>
+</html>
