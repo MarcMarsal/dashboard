@@ -94,23 +94,27 @@
     }
 
     async function runBacktest() {
-      await fetch("/backtest/run", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          symbol: "BTCUSDT",
-          timeframe: "15m",
-          period: "1d",
-          retracement: 25,
-          tp: 0.6,
-          slMode: "thirdCandle"
-        })
-      });
+  const symbol = document.getElementById("symbol").value;
+  const retracement = Number(document.getElementById("retracement").value);
+  const tp = Number(document.getElementById("tp").value);
+  const slMode = document.getElementById("slMode").value;
 
-      loadStats();
-    }
+  await fetch("/backtest/run", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      symbol,
+      timeframe: "15m",   // Encara no tens selector de timeframe
+      period: "1d",       // Encara no tens selector de període
+      retracement,
+      tp,
+      slMode
+    })
+  });
 
-    loadStats();
+  loadStats();
+}
+
   </script>
 
 </body>
