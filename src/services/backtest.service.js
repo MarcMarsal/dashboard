@@ -1,4 +1,5 @@
-import db from "../db.js";
+
+import * as db from "../db.js";
 
 // ----------------------
 // OBTENIR 4a VELA
