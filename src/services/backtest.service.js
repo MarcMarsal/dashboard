@@ -1,6 +1,56 @@
 import { db } from "../db.js";
 import { timeframeToSeconds } from "../utils/timeframe.js";
 
+export async function fetchStats() {
+  const totals = await db.query(`
+    SELECT 
+      COUNT(*) AS total,
+      SUM(CASE WHEN result = 'WIN' THEN 1 ELSE 0 END) AS wins,
+      SUM(CASE WHEN result = 'LOSS' THEN 1 ELSE 0 END) AS losses,
+      SUM(CASE WHEN result = 'NEUTRAL' THEN 1 ELSE 0 END) AS neutrals
+    FROM backtest_results
+  `);
+
+  const row = totals.rows[0];
+
+  const winrate =
+    row.total > 0 ? (row.wins / row.total) * 100 : 0;
+
+  const avg = await db.query(`
+    SELECT 
+      AVG(entry_price) AS avg_entry,
+      AVG(tp_price) AS avg_tp,
+      AVG(sl_price) AS avg_sl
+    FROM backtest_results
+  `);
+
+  const byType = await db.query(`
+    SELECT 
+      tipo,
+      COUNT(*) AS total,
+      SUM(CASE WHEN result = 'WIN' THEN 1 ELSE 0 END) AS wins,
+      SUM(CASE WHEN result = 'LOSS' THEN 1 ELSE 0 END) AS losses,
+      SUM(CASE WHEN result = 'NEUTRAL' THEN 1 ELSE 0 END) AS neutrals
+    FROM backtest_results
+    GROUP BY tipo
+  `);
+
+  return {
+    total: Number(row.total),
+    wins: Number(row.wins),
+    losses: Number(row.losses),
+    neutrals: Number(row.neutrals),
+    winrate: Number(winrate.toFixed(2)),
+    averages: {
+      entry: Number(avg.rows[0].avg_entry || 0),
+      tp: Number(avg.rows[0].avg_tp || 0),
+      sl: Number(avg.rows[0].avg_sl || 0)
+    },
+    byType: byType.rows
+  };
+}
+
+
 export async function executeBacktest(config) {
   const { symbol, timeframe, period, retracement, tp, slMode } = config;
 
