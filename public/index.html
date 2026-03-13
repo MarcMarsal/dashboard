@@ -41,6 +41,19 @@
   <option>BCH-USDT</option>
 </select>
 
+<div class="row">
+  <label>Retrocés (%):</label>
+  <input type="number" id="retracement" value="25" min="0" max="100">
+
+  <label>TP (%):</label>
+  <input type="number" id="tp" value="0.6" step="0.1" min="0">
+
+  <label>SL Mode:</label>
+  <select id="slMode">
+    <option value="thirdCandle">Tercera vela</option>
+    <option value="symmetric">Simètric</option>
+  </select>
+</div>
 
   <button onclick="runBacktest()">Executar Backtest</button>
 
