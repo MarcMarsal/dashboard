@@ -117,6 +117,11 @@ export async function executeBacktest(config) {
 async function processSignal(signal, config) {
   const { retracement, tp, slMode } = config;
 
+  // 🔥 Normalització del tipus (MS_V → MS, ES_V → ES)
+  let tipo = signal.tipo;
+  if (tipo.startsWith("MS")) tipo = "MS";
+  if (tipo.startsWith("ES")) tipo = "ES";
+
   // 1. Tercera vela
   const third = await db.query(
     `SELECT * FROM candles
@@ -141,7 +146,7 @@ async function processSignal(signal, config) {
   const retr = body * (retracement / 100);
 
   const entry =
-    signal.tipo === "MS"
+    tipo === "MS"
       ? thirdCandle.close - retr
       : thirdCandle.close + retr;
 
@@ -153,16 +158,16 @@ async function processSignal(signal, config) {
 
   // 5. TP i SL
   const tpPrice =
-    signal.tipo === "MS"
+    tipo === "MS"
       ? entry * (1 + tp / 100)
       : entry * (1 - tp / 100);
 
   const slPrice =
     slMode === "symmetric"
-      ? signal.tipo === "MS"
+      ? tipo === "MS"
         ? entry * (1 - tp / 100)
         : entry * (1 + tp / 100)
-      : signal.tipo === "MS"
+      : tipo === "MS"
         ? thirdCandle.low
         : thirdCandle.high;
 
@@ -179,12 +184,12 @@ async function processSignal(signal, config) {
 
   for (const candle of nextCandles.rows) {
     const hitTP =
-      signal.tipo === "MS"
+      tipo === "MS"
         ? candle.high >= tpPrice
         : candle.low <= tpPrice;
 
     const hitSL =
-      signal.tipo === "MS"
+      tipo === "MS"
         ? candle.low <= slPrice
         : candle.high >= slPrice;
 
@@ -231,3 +236,4 @@ async function processSignal(signal, config) {
     touchedSL: false
   };
 }
+
