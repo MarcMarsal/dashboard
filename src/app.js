@@ -8,8 +8,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.use("/backtest", backtestRoutes);
+// 👉 Primer servir la carpeta public
 app.use(express.static("public"));
 
+// 👉 Després les rutes API
+app.use("/backtest", backtestRoutes);
 
 export default app;
