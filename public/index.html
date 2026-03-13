@@ -112,8 +112,11 @@
       });
     }
 
-    async function runBacktest() {
+  async function runBacktest() {
   const symbol = document.getElementById("symbol").value;
+  const timeframe = document.getElementById("timeframe").value;
+  const period = document.getElementById("period").value;
+
   const retracement = Number(document.getElementById("retracement").value);
   const tp = Number(document.getElementById("tp").value);
   const slMode = document.getElementById("slMode").value;
@@ -123,8 +126,8 @@
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       symbol,
-      timeframe: "15m",   // Encara no tens selector de timeframe
-      period: "1d",       // Encara no tens selector de període
+      timeframe,
+      period,
       retracement,
       tp,
       slMode
@@ -133,6 +136,7 @@
 
   loadStats();
 }
+
 
   </script>
 
