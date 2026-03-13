@@ -1,246 +1,163 @@
-import { db } from "../db.js";
-import { timeframeToSeconds } from "../utils/timeframe.js";
+import db from "../db.js";
 
-export async function fetchStats() {
-  const totals = await db.query(`
-    SELECT 
-      COUNT(*) AS total,
-      SUM(CASE WHEN result = 'WIN' THEN 1 ELSE 0 END) AS wins,
-      SUM(CASE WHEN result = 'LOSS' THEN 1 ELSE 0 END) AS losses,
-      SUM(CASE WHEN result = 'NEUTRAL' THEN 1 ELSE 0 END) AS neutrals
-    FROM backtest_results
-  `);
-
-  const row = totals.rows[0];
-
-  const winrate =
-    row.total > 0 ? (row.wins / row.total) * 100 : 0;
-
-  const avg = await db.query(`
-    SELECT 
-      AVG(entry_price) AS avg_entry,
-      AVG(tp_price) AS avg_tp,
-      AVG(sl_price) AS avg_sl
-    FROM backtest_results
-  `);
-
-  const byType = await db.query(`
-    SELECT 
-      tipo,
-      COUNT(*) AS total,
-      SUM(CASE WHEN result = 'WIN' THEN 1 ELSE 0 END) AS wins,
-      SUM(CASE WHEN result = 'LOSS' THEN 1 ELSE 0 END) AS losses,
-      SUM(CASE WHEN result = 'NEUTRAL' THEN 1 ELSE 0 END) AS neutrals
-    FROM backtest_results
-    GROUP BY tipo
-  `);
-
-  return {
-    total: Number(row.total),
-    wins: Number(row.wins),
-    losses: Number(row.losses),
-    neutrals: Number(row.neutrals),
-    winrate: Number(winrate.toFixed(2)),
-    averages: {
-      entry: Number(avg.rows[0].avg_entry || 0),
-      tp: Number(avg.rows[0].avg_tp || 0),
-      sl: Number(avg.rows[0].avg_sl || 0)
-    },
-    byType: byType.rows
-  };
-}
-
-
-export async function executeBacktest(config) {
-  const { symbol, timeframe, period, retracement, tp, slMode } = config;
-
-  // 1. Buidar la taula
-  await db.query("DELETE FROM backtest_results");
-
-  // 2. Calcular timestamps del període
-  const now = Date.now();
-  const from =
-    period === "1d"
-      ? now - 86400000
-      : period === "1w"
-      ? now - 7 * 86400000
-      : now - 30 * 86400000;
-
-  // 3. Obtenir senyals
-  const signals = await db.query(
-    `SELECT * FROM signals
-     WHERE symbol = $1
-       AND timeframe = $2
-       AND timestamp BETWEEN $3 AND $4
-     ORDER BY timestamp ASC`,
-    [symbol, timeframe, from, now]
+// ----------------------
+// OBTENIR 4a VELA
+// ----------------------
+async function getFourthCandle(symbol, timeframe, signalTimestamp) {
+  const q = await db.query(
+    `SELECT open, high, low, close, timestamp_open, timestamp_close
+     FROM candles
+     WHERE symbol = $1 AND timeframe = $2
+       AND timestamp_open > $3
+     ORDER BY timestamp_open ASC
+     LIMIT 1`,
+    [symbol, timeframe, signalTimestamp]
   );
 
+  return q.rows[0] || null;
+}
+
+// ----------------------
+// OBTENIR 3a VELA
+// ----------------------
+async function getThirdCandle(symbol, timeframe, signalTimestamp) {
+  const q = await db.query(
+    `SELECT open, high, low, close
+     FROM candles
+     WHERE symbol = $1 AND timeframe = $2
+       AND timestamp_close = $3
+     LIMIT 1`,
+    [symbol, timeframe, signalTimestamp]
+  );
+
+  return q.rows[0] || null;
+}
+
+// ----------------------
+// CALCULAR TP I SL
+// ----------------------
+function computeTargets(tipo, entry, tpPercent, slMode, third) {
+  const tp =
+    tipo === "MS"
+      ? entry * (1 + tpPercent / 100)
+      : entry * (1 - tpPercent / 100);
+
+  let sl;
+
+  if (slMode === "simetric") {
+    sl =
+      tipo === "MS"
+        ? entry * (1 - tpPercent / 100)
+        : entry * (1 + tpPercent / 100);
+  } else {
+    sl = tipo === "MS" ? third.low : third.high;
+  }
+
+  return { tp, sl };
+}
+
+// ----------------------
+// COMPROVAR ENTRADA
+// ----------------------
+function checkEntry(fourth, entry) {
+  return fourth.low <= entry && entry <= fourth.high;
+}
+
+// ----------------------
+// COMPROVAR RESULTAT
+// ----------------------
+function checkOutcome(tipo, fourth, tp, sl) {
+  const prices = [fourth.open, fourth.high, fourth.low, fourth.close];
+
+  if (tipo === "MS") {
+    if (prices.some((p) => p >= tp)) return "WIN";
+    if (prices.some((p) => p <= sl)) return "LOSS";
+  } else {
+    if (prices.some((p) => p <= tp)) return "WIN";
+    if (prices.some((p) => p >= sl)) return "LOSS";
+  }
+
+  return "NEUTRAL";
+}
+
+// ----------------------
+// BACKTEST COMPLET
+// ----------------------
+export async function executeBacktest({
+  symbol,
+  timeframe,
+  start,
+  end,
+  tpPercent,
+  slMode
+}) {
+  const signals = await db.query(
+    `SELECT symbol, timeframe, tipo, entry, timestamp
+     FROM signals
+     WHERE symbol = $1 AND timeframe = $2
+       AND timestamp BETWEEN $3 AND $4
+     ORDER BY timestamp ASC`,
+    [symbol, timeframe, start, end]
+  );
+
+  let total = 0;
+  let entries = 0;
+  let noEntries = 0;
   let wins = 0;
   let losses = 0;
   let neutrals = 0;
 
-  for (const signal of signals.rows) {
-    const result = await processSignal(signal, config);
-    if (!result) continue;
+  for (const s of signals.rows) {
+    total++;
 
-    await db.query(
-      `INSERT INTO backtest_results
-      (signal_timestamp, symbol, timeframe, tipo, retracement, tp_percent, sl_mode,
-       entry_price, tp_price, sl_price, result, touched_tp, touched_sl)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-      [
-        signal.timestamp,
-        signal.symbol,
-        signal.timeframe,
-        signal.tipo,
-        retracement,
-        tp,
-        slMode,
-        result.entry,
-        result.tp,
-        result.sl,
-        result.result,
-        result.touchedTP,
-        result.touchedSL
-      ]
+    const fourth = await getFourthCandle(symbol, timeframe, s.timestamp);
+    if (!fourth) {
+      noEntries++;
+      continue;
+    }
+
+    const third = await getThirdCandle(symbol, timeframe, s.timestamp);
+
+    const hasEntry = checkEntry(fourth, s.entry);
+    if (!hasEntry) {
+      noEntries++;
+      continue;
+    }
+
+    entries++;
+
+    const { tp, sl } = computeTargets(
+      s.tipo,
+      s.entry,
+      tpPercent,
+      slMode,
+      third
     );
 
-    if (result.result === "WIN") wins++;
-    else if (result.result === "LOSS") losses++;
+    const outcome = checkOutcome(s.tipo, fourth, tp, sl);
+
+    if (outcome === "WIN") wins++;
+    else if (outcome === "LOSS") losses++;
     else neutrals++;
   }
 
-  return { wins, losses, neutrals };
-}
-
-async function processSignal(signal, config) {
-  const { retracement, tp, slMode } = config;
-
-  // 1. Normalitzar tipus
-  let tipo = signal.tipo;
-  if (tipo.startsWith("MS")) tipo = "MS"; // LONG
-  if (tipo.startsWith("ES")) tipo = "ES"; // SHORT
-
-  // 2. Tercera vela
-  const third = await db.query(
-    `SELECT * FROM candles
-     WHERE symbol = $1 AND timeframe = $2 AND timestamp = $3`,
-    [signal.symbol, signal.timeframe, signal.timestamp]
-  );
-  if (!third.rows.length) return null;
-  const thirdCandle = third.rows[0];
-
-  // 3. Quarta vela tolerant
-  const interval = timeframeToSeconds(signal.timeframe) * 1000;
-
-  const fourth = await db.query(
-    `SELECT * FROM candles
-     WHERE symbol = $1 AND timeframe = $2
-       AND timestamp > $3
-       AND timestamp <= $3 + $4
-     ORDER BY timestamp ASC
-     LIMIT 1`,
-    [signal.symbol, signal.timeframe, signal.timestamp, interval]
-  );
-  if (!fourth.rows.length) return null;
-  const fourthCandle = fourth.rows[0];
-
-  // 4. Cos i retracement
-  const body = Math.abs(thirdCandle.close - thirdCandle.open);
-  const retr = body * (retracement / 100);
-
-  // 5. Entrada EXACTA segons la teva fórmula
-  let entry;
-  if (tipo === "MS") {
-    // LONG → close - retracement
-    entry = thirdCandle.close - retr;
-  } else {
-    // SHORT → close + retracement
-    entry = thirdCandle.close + retr;
-  }
-
-  // 6. Comprovar si la quarta vela toca l’entrada
-  const touchesEntry =
-    fourthCandle.low <= entry && fourthCandle.high >= entry;
-
-  if (!touchesEntry) return null;
-
-  // 7. TP i SL
-  const tpPrice =
-    tipo === "MS"
-      ? entry * (1 + tp / 100)
-      : entry * (1 - tp / 100);
-
-  const slPrice =
-    slMode === "symmetric"
-      ? tipo === "MS"
-        ? entry * (1 - tp / 100)
-        : entry * (1 + tp / 100)
-      : tipo === "MS"
-        ? thirdCandle.low
-        : thirdCandle.high;
-
-  // 8. Veles següents
-  const nextCandles = await db.query(
-    `SELECT * FROM candles
-     WHERE symbol = $1 AND timeframe = $2 AND timestamp > $3
-     ORDER BY timestamp ASC`,
-    [signal.symbol, signal.timeframe, fourthCandle.timestamp]
-  );
-
-  for (const candle of nextCandles.rows) {
-    const hitTP =
-      tipo === "MS"
-        ? candle.high >= tpPrice
-        : candle.low <= tpPrice;
-
-    const hitSL =
-      tipo === "MS"
-        ? candle.low <= slPrice
-        : candle.high >= slPrice;
-
-    if (hitTP && hitSL) {
-      return {
-        entry,
-        tp: tpPrice,
-        sl: slPrice,
-        result: "NEUTRAL",
-        touchedTP: true,
-        touchedSL: true
-      };
-    }
-
-    if (hitTP) {
-      return {
-        entry,
-        tp: tpPrice,
-        sl: slPrice,
-        result: "WIN",
-        touchedTP: true,
-        touchedSL: false
-      };
-    }
-
-    if (hitSL) {
-      return {
-        entry,
-        tp: tpPrice,
-        sl: slPrice,
-        result: "LOSS",
-        touchedTP: false,
-        touchedSL: true
-      };
-    }
-  }
-
-  // 9. Si no toca res → neutral
   return {
-    entry,
-    tp: tpPrice,
-    sl: slPrice,
-    result: "NEUTRAL",
-    touchedTP: false,
-    touchedSL: false
+    totalSignals: total,
+    entries,
+    noEntries,
+    wins,
+    losses,
+    neutrals,
+    winRate: entries > 0 ? (wins / entries) * 100 : 0,
+    entryRate: total > 0 ? (entries / total) * 100 : 0
   };
 }
+
+// ----------------------
+// STATS GLOBALS
+// ----------------------
+export async function fetchStats() {
+  const q = await db.query(`SELECT COUNT(*) FROM signals`);
+  return { totalSignals: Number(q.rows[0].count) };
+}
+
