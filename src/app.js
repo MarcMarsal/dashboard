@@ -11,4 +11,8 @@ app.use(express.json());
 // import backtestRoutes from "./api/backtest.routes.js";
 // app.use("/backtest", backtestRoutes);
 
+import helloRoutes from "./api/hello.routes.js";
+app.use("/hello", helloRoutes);
+
+
 export default app;
