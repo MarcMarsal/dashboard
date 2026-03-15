@@ -9,6 +9,14 @@ function tfToMs(tf) {
 async function getCandle(symbol, timeframe, ts) {
   const tfMs = timeframeToSeconds(timeframe) * 1000;
 
+  // DEBUG IMPORTANT
+  console.log("getCandle DEBUG:", {
+    symbol,
+    timeframe,
+    ts,
+    tfMs
+  });
+
   const r = await db.query(
     `SELECT symbol, timeframe, open, high, low, close, volume,
             timestamp, timestamp_es, date_es
