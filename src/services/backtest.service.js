@@ -4,6 +4,7 @@ import {
   getSecondCandle,
   getThirdCandle,
   getFourthCandle,
+  getNextCandles,
   checkEntry,
   computeTargets,
   checkTouches
