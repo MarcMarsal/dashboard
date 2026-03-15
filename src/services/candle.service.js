@@ -9,7 +9,6 @@ function tfToMs(tf) {
 async function getCandle(symbol, timeframe, ts) {
   const tfMs = timeframeToSeconds(timeframe) * 1000;
 
-  // DEBUG IMPORTANT
   console.log("getCandle DEBUG:", {
     symbol,
     timeframe,
@@ -23,8 +22,8 @@ async function getCandle(symbol, timeframe, ts) {
      FROM candles
      WHERE symbol = $1
        AND timeframe = $2
-       AND timestamp > $3 - $4
-       AND timestamp <= $3
+       AND timestamp > ($3::bigint - $4::bigint)
+       AND timestamp <= $3::bigint
      ORDER BY timestamp DESC
      LIMIT 1`,
     [symbol, timeframe, ts, tfMs]
@@ -32,7 +31,6 @@ async function getCandle(symbol, timeframe, ts) {
 
   return r.rows[0] || null;
 }
-
 // 1a, 2a, 3a, 4a vela
 export async function getFirstCandle(symbol, timeframe, ts3) {
   const ms = tfToMs(timeframe);
