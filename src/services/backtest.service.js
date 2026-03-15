@@ -1,111 +1,15 @@
-import { db } from "../db.js";
+import db from "../utils/db.js";
+import {
+  getFirstCandle,
+  getSecondCandle,
+  getThirdCandle,
+  getFourthCandle,
+  checkEntry,
+  computeTargets,
+  checkTouches
+} from "./candle.service.js";
 
-// 3a vela = la de l'alerta
-async function getThirdCandle(symbol, timeframe, ts3) {
-  const q = await db.query(
-    `SELECT open, high, low, close, timestamp_es
-     FROM candles
-     WHERE symbol = $1 AND timeframe = $2
-       AND timestamp_es = $3
-     LIMIT 1`,
-    [symbol, timeframe, ts3]
-  );
-  return q.rows[0] || null;
-}
-
-// 2a vela = la immediatament anterior
-async function getSecondCandle(symbol, timeframe, ts3) {
-  const q = await db.query(
-    `SELECT open, high, low, close, timestamp_es
-     FROM candles
-     WHERE symbol = $1 AND timeframe = $2
-       AND timestamp_es < $3
-     ORDER BY timestamp_es DESC
-     LIMIT 1`,
-    [symbol, timeframe, ts3]
-  );
-  return q.rows[0] || null;
-}
-
-// 1a vela = la d'abans de la 2a
-async function getFirstCandle(symbol, timeframe, ts3) {
-  const q = await db.query(
-    `SELECT open, high, low, close, timestamp_es
-     FROM candles
-     WHERE symbol = $1 AND timeframe = $2
-       AND timestamp_es < $3
-     ORDER BY timestamp_es DESC
-     OFFSET 1
-     LIMIT 1`,
-    [symbol, timeframe, ts3]
-  );
-  return q.rows[0] || null;
-}
-
-// 4a vela = la següent
-async function getFourthCandle(symbol, timeframe, ts3) {
-  const q = await db.query(
-    `SELECT open, high, low, close, timestamp_es
-     FROM candles
-     WHERE symbol = $1 AND timeframe = $2
-       AND timestamp_es > $3
-     ORDER BY timestamp_es ASC
-     LIMIT 1`,
-    [symbol, timeframe, ts3]
-  );
-  return q.rows[0] || null;
-}
-
-// TP / SL
-function computeTargets(tipo, entryPrice, tpPercent, slMode, second) {
-  const isLong = tipo === "MS";
-
-  const tp = isLong
-    ? entryPrice * (1 + tpPercent / 100)
-    : entryPrice * (1 - tpPercent / 100);
-
-  let sl;
-  if (slMode === "simetric") {
-    sl = isLong
-      ? entryPrice * (1 - tpPercent / 100)
-      : entryPrice * (1 + tpPercent / 100);
-  } else {
-    sl = isLong ? second.low : second.high;
-  }
-
-  return { tp, sl };
-}
-
-// Entrada
-function checkEntry(fourth, entryPrice) {
-  return fourth.low <= entryPrice && entryPrice <= fourth.high;
-}
-
-// TP/SL tocats
-function checkTouches(tipo, fourth, tp, sl) {
-  const prices = [fourth.open, fourth.high, fourth.low, fourth.close];
-  const isLong = tipo === "MS";
-
-  let touchedTP = false;
-  let touchedSL = false;
-
-  if (isLong) {
-    touchedTP = prices.some((p) => p >= tp);
-    touchedSL = prices.some((p) => p <= sl);
-  } else {
-    touchedTP = prices.some((p) => p <= tp);
-    touchedSL = prices.some((p) => p >= sl);
-  }
-
-  let outcome = "NEUTRAL";
-  if (touchedTP && !touchedSL) outcome = "WIN";
-  else if (!touchedTP && touchedSL) outcome = "LOSS";
-  else if (touchedTP && touchedSL) outcome = "NEUTRAL";
-
-  return { touchedTP, touchedSL, outcome };
-}
-
-// BACKTEST
+// BACKTEST PRINCIPAL
 export async function executeBacktest({
   symbol,
   timeframe,
@@ -115,14 +19,16 @@ export async function executeBacktest({
   slMode,
   retracement
 }) {
+  // Esborrem resultats anteriors
   await db.query("DELETE FROM backtest_results");
 
+  // IMPORTANT: ara fem servir ts (BIGINT) en lloc de timestamp_es (TEXT)
   const signals = await db.query(
-    `SELECT symbol, timeframe, tipo, entry, timestamp_es
+    `SELECT symbol, timeframe, tipo, entry, timestamp_es, ts
      FROM signals
      WHERE symbol = $1 AND timeframe = $2
-       AND timestamp_es BETWEEN $3 AND $4
-     ORDER BY timestamp_es ASC`,
+       AND ts BETWEEN $3 AND $4
+     ORDER BY ts ASC`,
     [symbol, timeframe, start, end]
   );
 
@@ -137,8 +43,10 @@ export async function executeBacktest({
   for (const s of signals.rows) {
     total++;
 
-    const ts3 = s.timestamp_es; // la 3a vela real
+    // ts és el timestamp real en ms
+    const ts3 = s.ts;
 
+    // Candles basades en ts
     const third = await getThirdCandle(symbol, timeframe, ts3);
     const second = await getSecondCandle(symbol, timeframe, ts3);
     const first = await getFirstCandle(symbol, timeframe, ts3);
@@ -164,7 +72,14 @@ export async function executeBacktest({
 
     entries++;
 
-    const { tp, sl } = computeTargets(s.tipo, entryPrice, tpPercent, slMode, second);
+    const { tp, sl } = computeTargets(
+      s.tipo,
+      entryPrice,
+      tpPercent,
+      slMode,
+      second
+    );
+
     const { touchedTP, touchedSL, outcome } = checkTouches(
       s.tipo,
       fourth,
@@ -176,6 +91,7 @@ export async function executeBacktest({
     else if (outcome === "LOSS") losses++;
     else neutrals++;
 
+    // Guardem també ts per tenir el timestamp real
     await db.query(
       `INSERT INTO backtest_results (
         signal_timestamp,
@@ -195,8 +111,8 @@ export async function executeBacktest({
         created_at
       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW())`,
       [
-        s.timestamp_es,
-        s.timestamp_es,
+        s.ts,               // timestamp real en ms
+        s.timestamp_es,     // format humà original
         symbol,
         timeframe,
         s.tipo,
@@ -214,6 +130,7 @@ export async function executeBacktest({
 
     details.push({
       timestamp_es: s.timestamp_es,
+      ts: s.ts,
       entry_original: entryOriginal,
       entry_retracement: entryPrice,
       first,
@@ -242,7 +159,27 @@ export async function executeBacktest({
   };
 }
 
+// STATS PER AL DASHBOARD
 export async function fetchStats() {
-  const q = await db.query(`SELECT COUNT(*) FROM signals`);
-  return { totalSignals: Number(q.rows[0].count) };
+  const r = await db.query(`
+    SELECT
+      COUNT(*) AS total,
+      SUM(CASE WHEN result = 'WIN' THEN 1 ELSE 0 END) AS wins,
+      SUM(CASE WHEN result = 'LOSS' THEN 1 ELSE 0 END) AS losses,
+      SUM(CASE WHEN result = 'NEUTRAL' THEN 1 ELSE 0 END) AS neutrals
+    FROM backtest_results
+  `);
+
+  const s = r.rows[0];
+
+  const winrate =
+    s.wins > 0 ? ((s.wins / (s.wins + s.losses + s.neutrals)) * 100).toFixed(2) : 0;
+
+  return {
+    total: Number(s.total),
+    wins: Number(s.wins),
+    losses: Number(s.losses),
+    neutrals: Number(s.neutrals),
+    winrate
+  };
 }
