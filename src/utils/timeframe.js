@@ -1,10 +1,11 @@
+
+
 export function timeframeToSeconds(tf) {
-  switch (tf) {
-    case "15m": return 900;
-    case "30m": return 1800;
-    case "1h": return 3600;
-    case "4h": return 14400;
-    default:
-      throw new Error("Timeframe no suportat: " + tf);
-  }
+  const n = parseInt(tf);
+
+  if (tf.endsWith("m")) return n * 60;
+  if (tf.endsWith("h")) return n * 60 * 60;
+  if (tf.endsWith("d")) return n * 24 * 60 * 60;
+
+  throw new Error("Timeframe no reconegut: " + tf);
 }
