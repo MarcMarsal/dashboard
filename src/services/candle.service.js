@@ -7,17 +7,21 @@ function tfToMs(tf) {
 }
 
 async function getCandle(symbol, timeframe, ts) {
+  const tfMs = timeframeToSeconds(timeframe) * 1000;
+
   const r = await db.query(
     `SELECT symbol, timeframe, open, high, low, close, volume,
             timestamp, timestamp_es, date_es
      FROM candles
-     WHERE symbol = $1 
-       AND timeframe = $2 
+     WHERE symbol = $1
+       AND timeframe = $2
+       AND timestamp > $3 - $4
        AND timestamp <= $3
      ORDER BY timestamp DESC
      LIMIT 1`,
-    [symbol, timeframe, ts]
+    [symbol, timeframe, ts, tfMs]
   );
+
   return r.rows[0] || null;
 }
 
