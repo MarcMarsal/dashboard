@@ -56,7 +56,11 @@ export async function executeBacktest({
     const first = await getFirstCandle(symbol, timeframe, ts3);
     const fourth = await getFourthCandle(symbol, timeframe, ts3);
 
-    //console.log("DEBUG FOURTH CANDLE:", fourth);
+    console.log("TS DEBUG", {
+  signalTs: s.timestamp,
+  thirdTs: third.timestamp,
+  fourthTs: fourth.timestamp
+});
 
     if (!third || !second || !first || !fourth) {
       noEntries++;
@@ -83,20 +87,7 @@ if (isLong) {
   // ES: entrada = close 3a + % cos
   entryPrice = third.close + retraceAmount;
 }
-// -----------------------------------------------------
-//if (s.timestamp === 1773532800000) {
-  console.log("DEBUG ES 111", {
-    tipo: s.tipo,
-    open3: third.open,
-    close3: third.close,
-    body,
-    retracement,
-    retraceAmount,
-    entryPrice,
-    fourthLow: fourth.low,
-    fourthHigh: fourth.high
-  });
-//}
+
 
 const hasEntry = checkEntry(fourth, entryPrice);
 if (!hasEntry) {
@@ -113,6 +104,7 @@ if (!hasEntry) {
     );
 
     const nextCandles = await getNextCandles(symbol, timeframe, fourth.timestamp);
+    console.log("NEXT CANDLES COUNT", nextCandles.length);
 
 const { touchedTP, touchedSL, outcome } = checkTouches(
   s.tipo,
