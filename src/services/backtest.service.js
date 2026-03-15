@@ -1,10 +1,7 @@
-
 import * as db from "../db.js";
 
-// ----------------------
-// OBTENIR 4a VELA
-// ----------------------
-async function getFourthCandle(symbol, timeframe, signalTimestamp) {
+// 3a vela: primera amb timestamp_open > timestamp_2a
+async function getThirdCandle(symbol, timeframe, signalTimestamp) {
   const q = await db.query(
     `SELECT open, high, low, close, timestamp_open, timestamp_close
      FROM candles
@@ -14,86 +11,88 @@ async function getFourthCandle(symbol, timeframe, signalTimestamp) {
      LIMIT 1`,
     [symbol, timeframe, signalTimestamp]
   );
-
   return q.rows[0] || null;
 }
 
-// ----------------------
-// OBTENIR 3a VELA
-// ----------------------
-async function getThirdCandle(symbol, timeframe, signalTimestamp) {
+// 4a vela: segona amb timestamp_open > timestamp_2a
+async function getFourthCandle(symbol, timeframe, signalTimestamp) {
   const q = await db.query(
-    `SELECT open, high, low, close
+    `SELECT open, high, low, close, timestamp_open, timestamp_close
      FROM candles
      WHERE symbol = $1 AND timeframe = $2
-       AND timestamp_close = $3
+       AND timestamp_open > $3
+     ORDER BY timestamp_open ASC
+     OFFSET 1
      LIMIT 1`,
     [symbol, timeframe, signalTimestamp]
   );
-
   return q.rows[0] || null;
 }
 
-// ----------------------
-// CALCULAR TP I SL
-// ----------------------
-function computeTargets(tipo, entry, tpPercent, slMode, third) {
-  const tp =
-    tipo === "MS"
-      ? entry * (1 + tpPercent / 100)
-      : entry * (1 - tpPercent / 100);
+// TP / SL
+function computeTargets(tipo, entryPrice, tpPercent, slMode, third) {
+  const isLong = tipo === "MS";
+
+  const tp = isLong
+    ? entryPrice * (1 + tpPercent / 100)
+    : entryPrice * (1 - tpPercent / 100);
 
   let sl;
-
   if (slMode === "simetric") {
-    sl =
-      tipo === "MS"
-        ? entry * (1 - tpPercent / 100)
-        : entry * (1 + tpPercent / 100);
+    sl = isLong
+      ? entryPrice * (1 - tpPercent / 100)
+      : entryPrice * (1 + tpPercent / 100);
   } else {
-    sl = tipo === "MS" ? third.low : third.high;
+    sl = isLong ? third.low : third.high;
   }
 
   return { tp, sl };
 }
 
-// ----------------------
-// COMPROVAR ENTRADA
-// ----------------------
-function checkEntry(fourth, entry) {
-  return fourth.low <= entry && entry <= fourth.high;
+// entrada
+function checkEntry(fourth, entryPrice) {
+  return fourth.low <= entryPrice && entryPrice <= fourth.high;
 }
 
-// ----------------------
-// COMPROVAR RESULTAT
-// ----------------------
-function checkOutcome(tipo, fourth, tp, sl) {
+// TP/SL tocats
+function checkTouches(tipo, fourth, tp, sl) {
   const prices = [fourth.open, fourth.high, fourth.low, fourth.close];
+  const isLong = tipo === "MS";
 
-  if (tipo === "MS") {
-    if (prices.some((p) => p >= tp)) return "WIN";
-    if (prices.some((p) => p <= sl)) return "LOSS";
+  let touchedTP = false;
+  let touchedSL = false;
+
+  if (isLong) {
+    touchedTP = prices.some((p) => p >= tp);
+    touchedSL = prices.some((p) => p <= sl);
   } else {
-    if (prices.some((p) => p <= tp)) return "WIN";
-    if (prices.some((p) => p >= sl)) return "LOSS";
+    touchedTP = prices.some((p) => p <= tp);
+    touchedSL = prices.some((p) => p >= sl);
   }
 
-  return "NEUTRAL";
+  let outcome = "NEUTRAL";
+  if (touchedTP && !touchedSL) outcome = "WIN";
+  else if (!touchedTP && touchedSL) outcome = "LOSS";
+  else if (touchedTP && touchedSL) outcome = "NEUTRAL";
+
+  return { touchedTP, touchedSL, outcome };
 }
 
-// ----------------------
 // BACKTEST COMPLET
-// ----------------------
 export async function executeBacktest({
   symbol,
   timeframe,
   start,
   end,
   tpPercent,
-  slMode
+  slMode,
+  retracement
 }) {
+  // netejar resultats previs
+  await db.query("DELETE FROM backtest_results");
+
   const signals = await db.query(
-    `SELECT symbol, timeframe, tipo, entry, timestamp
+    `SELECT symbol, timeframe, tipo, entry, timestamp, timestamp_es
      FROM signals
      WHERE symbol = $1 AND timeframe = $2
        AND timestamp BETWEEN $3 AND $4
@@ -107,19 +106,28 @@ export async function executeBacktest({
   let wins = 0;
   let losses = 0;
   let neutrals = 0;
+  const details = [];
 
   for (const s of signals.rows) {
     total++;
 
+    const third = await getThirdCandle(symbol, timeframe, s.timestamp);
     const fourth = await getFourthCandle(symbol, timeframe, s.timestamp);
-    if (!fourth) {
+
+    if (!third || !fourth) {
       noEntries++;
       continue;
     }
 
-    const third = await getThirdCandle(symbol, timeframe, s.timestamp);
+    const isLong = s.tipo === "MS";
 
-    const hasEntry = checkEntry(fourth, s.entry);
+    // entrada amb retrocés
+    const entryOriginal = Number(s.entry);
+    const entryPrice = isLong
+      ? entryOriginal * (1 - retracement / 100)
+      : entryOriginal * (1 + retracement / 100);
+
+    const hasEntry = checkEntry(fourth, entryPrice);
     if (!hasEntry) {
       noEntries++;
       continue;
@@ -127,19 +135,69 @@ export async function executeBacktest({
 
     entries++;
 
-    const { tp, sl } = computeTargets(
+    const { tp, sl } = computeTargets(s.tipo, entryPrice, tpPercent, slMode, third);
+    const { touchedTP, touchedSL, outcome } = checkTouches(
       s.tipo,
-      s.entry,
-      tpPercent,
-      slMode,
-      third
+      fourth,
+      tp,
+      sl
     );
-
-    const outcome = checkOutcome(s.tipo, fourth, tp, sl);
 
     if (outcome === "WIN") wins++;
     else if (outcome === "LOSS") losses++;
     else neutrals++;
+
+    // inserir a backtest_results
+    await db.query(
+      `INSERT INTO backtest_results (
+        signal_timestamp,
+        timestamp_es,
+        symbol,
+        timeframe,
+        tipo,
+        retracement,
+        tp_percent,
+        sl_mode,
+        entry_price,
+        tp_price,
+        sl_price,
+        result,
+        touched_tp,
+        touched_sl,
+        created_at
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW())`,
+      [
+        s.timestamp,
+        s.timestamp_es,
+        symbol,
+        timeframe,
+        s.tipo,
+        retracement,
+        tpPercent,
+        slMode,
+        entryPrice,
+        tp,
+        sl,
+        outcome,
+        touchedTP,
+        touchedSL
+      ]
+    );
+
+    // detall per al dashboard (Show lines)
+    details.push({
+      timestamp_es: s.timestamp_es,
+      entry_original: entryOriginal,
+      entry_retracement: entryPrice,
+      third,
+      fourth,
+      touch_entry: hasEntry,
+      tp_price: tp,
+      sl_price: sl,
+      touched_tp: touchedTP,
+      touched_sl: touchedSL,
+      outcome
+    });
   }
 
   return {
@@ -150,15 +208,12 @@ export async function executeBacktest({
     losses,
     neutrals,
     winRate: entries > 0 ? (wins / entries) * 100 : 0,
-    entryRate: total > 0 ? (entries / total) * 100 : 0
+    entryRate: total > 0 ? (entries / total) * 100 : 0,
+    details
   };
 }
 
-// ----------------------
-// STATS GLOBALS
-// ----------------------
 export async function fetchStats() {
   const q = await db.query(`SELECT COUNT(*) FROM signals`);
   return { totalSignals: Number(q.rows[0].count) };
 }
-
