@@ -1,12 +1,12 @@
 import { db } from "../db.js";
 
-// 3a vela: primera amb timestamp > timestamp_2a
+// 3a vela: primera amb timestamp >= timestamp_2a
 async function getThirdCandle(symbol, timeframe, ts2) {
   const q = await db.query(
     `SELECT open, high, low, close, timestamp
      FROM candles
      WHERE symbol = $1 AND timeframe = $2
-       AND timestamp > $3
+       AND timestamp >= $3
      ORDER BY timestamp ASC
      LIMIT 1`,
     [symbol, timeframe, ts2]
@@ -14,13 +14,13 @@ async function getThirdCandle(symbol, timeframe, ts2) {
   return q.rows[0] || null;
 }
 
-// 4a vela: segona amb timestamp > timestamp_2a
+// 4a vela: segona amb timestamp >= timestamp_2a
 async function getFourthCandle(symbol, timeframe, ts2) {
   const q = await db.query(
     `SELECT open, high, low, close, timestamp
      FROM candles
      WHERE symbol = $1 AND timeframe = $2
-       AND timestamp > $3
+       AND timestamp >= $3
      ORDER BY timestamp ASC
      OFFSET 1
      LIMIT 1`,
