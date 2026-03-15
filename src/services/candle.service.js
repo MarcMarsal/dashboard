@@ -46,7 +46,8 @@ export function checkEntry(fourth, entryPrice) {
 }
 
 // Calcular TP i SL
-export function computeTargets(tipo, entryPrice, tpPercent, slMode, fourth) {
+export function computeTargets(tipo, entryPrice, tpPercent, slMode, third) {
+  // TP basat en percentatge (35% en el teu cas)
   const tp = tipo === "MS"
     ? entryPrice * (1 + tpPercent / 100)
     : entryPrice * (1 - tpPercent / 100);
@@ -54,12 +55,13 @@ export function computeTargets(tipo, entryPrice, tpPercent, slMode, fourth) {
   let sl;
 
   if (slMode === "percent") {
+    // SL simètric al TP
     sl = tipo === "MS"
       ? entryPrice * (1 - tpPercent / 100)
       : entryPrice * (1 + tpPercent / 100);
   } else {
-    // mode "candle": SL basat en la 4a vela
-    sl = tipo === "MS" ? fourth.low : fourth.high;
+    // SL basat en la 3a vela (el que tu fas realment)
+    sl = tipo === "MS" ? third.low : third.high;
   }
 
   return { tp, sl };
