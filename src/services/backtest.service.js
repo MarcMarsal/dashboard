@@ -74,16 +74,15 @@ export async function executeBacktest({
 
     const isLong = s.tipo === "MS";
 
-    const entryOriginal = Number(s.entry);
-    const entryPrice = isLong
-      ? entryOriginal * (1 - retracement / 100)
-      : entryOriginal * (1 + retracement / 100);
+   // Entrada basada en la 4a vela (entrada realista)
+const entryPrice = fourth.open;
 
-    const hasEntry = checkEntry(fourth, entryPrice);
-    if (!hasEntry) {
-      noEntries++;
-      continue;
-    }
+// Comprovem si la 4a vela toca l'entrada
+const hasEntry = checkEntry(fourth, entryPrice);
+if (!hasEntry) {
+  noEntries++;
+  continue;
+}
 
     entries++;
 
