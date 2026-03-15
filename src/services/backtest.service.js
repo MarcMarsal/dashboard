@@ -31,6 +31,13 @@ export async function executeBacktest({
      ORDER BY timestamp ASC`,
     [symbol, timeframe, start, end]
   );
+  console.log("SIGNALS DEBUG:", {
+  symbol,
+  timeframe,
+  start,
+  end,
+  count: signals.rows.length
+});
 
   let total = 0;
   let entries = 0;
