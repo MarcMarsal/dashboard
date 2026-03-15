@@ -84,6 +84,19 @@ if (isLong) {
   entryPrice = third.close + retraceAmount;
 }
 // -----------------------------------------------------
+if (s.timestamp === 1773532800000) {
+  console.log("DEBUG ES 111", {
+    tipo: s.tipo,
+    open3: third.open,
+    close3: third.close,
+    body,
+    retracement,
+    retraceAmount,
+    entryPrice,
+    fourthLow: fourth.low,
+    fourthHigh: fourth.high
+  });
+}
 
 const hasEntry = checkEntry(fourth, entryPrice);
 if (!hasEntry) {
