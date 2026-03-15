@@ -144,7 +144,7 @@ if (!hasEntry) {
     details.push({
       timestamp_es: s.timestamp_es,
       ts: s.timestamp,
-      entry_original: entryOriginal,
+      //entry_original: entryOriginal,
       entry_retracement: entryPrice,
       first,
       second,
