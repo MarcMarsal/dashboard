@@ -1,4 +1,4 @@
-import db from "../utils/db.js";
+import db from "../db.js";
 import {
   getFirstCandle,
   getSecondCandle,
