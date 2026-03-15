@@ -21,24 +21,56 @@ async function getCandle(symbol, timeframe, ts) {
   return r.rows[0] || null;
 }
 
+// 1a vela: dues veles abans de la signal
 export async function getFirstCandle(symbol, timeframe, ts3) {
-  const ms = tfToMs(timeframe);
-  return getCandle(symbol, timeframe, ts3 - 3 * ms);
+  const r = await db.query(
+    `SELECT * FROM candles
+     WHERE symbol = $1 AND timeframe = $2
+       AND timestamp < $3
+     ORDER BY timestamp DESC
+     LIMIT 2`,
+    [symbol, timeframe, ts3]
+  );
+  return r.rows.length === 2 ? r.rows[1] : null;
 }
 
+// 2a vela: una vela abans de la signal
 export async function getSecondCandle(symbol, timeframe, ts3) {
-  const ms = tfToMs(timeframe);
-  return getCandle(symbol, timeframe, ts3 - 2 * ms);
+  const r = await db.query(
+    `SELECT * FROM candles
+     WHERE symbol = $1 AND timeframe = $2
+       AND timestamp < $3
+     ORDER BY timestamp DESC
+     LIMIT 1`,
+    [symbol, timeframe, ts3]
+  );
+  return r.rows[0] || null;
 }
 
+// 3a vela: la vela EXACTA de la signal
 export async function getThirdCandle(symbol, timeframe, ts3) {
-  const ms = tfToMs(timeframe);
-  return getCandle(symbol, timeframe, ts3 - 1 * ms);
+  const r = await db.query(
+    `SELECT * FROM candles
+     WHERE symbol = $1 AND timeframe = $2
+       AND timestamp = $3`,
+    [symbol, timeframe, ts3]
+  );
+  return r.rows[0] || null;
 }
 
+// 4a vela: la següent a la signal
 export async function getFourthCandle(symbol, timeframe, ts3) {
-  return getCandle(symbol, timeframe, ts3);
+  const r = await db.query(
+    `SELECT * FROM candles
+     WHERE symbol = $1 AND timeframe = $2
+       AND timestamp > $3
+     ORDER BY timestamp ASC
+     LIMIT 1`,
+    [symbol, timeframe, ts3]
+  );
+  return r.rows[0] || null;
 }
+
 
 // Comprovar si la 4a vela toca el preu d'entrada
 export function checkEntry(fourth, entryPrice) {
