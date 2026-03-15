@@ -6,15 +6,15 @@ function tfToMs(tf) {
   return timeframeToSeconds(tf) * 1000;
 }
 
-// Obtenir una vela exacta pel seu open_time
-async function getCandle(symbol, timeframe, openTime) {
+// Obtenir una vela exacta pel seu timestamp
+async function getCandle(symbol, timeframe, ts) {
   const r = await db.query(
     `SELECT symbol, timeframe, open, high, low, close, volume,
-            open_time, close_time, date_es
+            timestamp, timestamp_es, date_es
      FROM candles
-     WHERE symbol = $1 AND timeframe = $2 AND open_time = $3
+     WHERE symbol = $1 AND timeframe = $2 AND timestamp = $3
      LIMIT 1`,
-    [symbol, timeframe, openTime]
+    [symbol, timeframe, ts]
   );
   return r.rows[0] || null;
 }
