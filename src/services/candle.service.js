@@ -77,21 +77,29 @@ export function checkEntry(fourth, entryPrice) {
   return fourth.low <= entryPrice && fourth.high >= entryPrice;
 }
 
-// Calcular TP i SL
 export function computeTargets(tipo, entryPrice, tpPercent, slMode, third) {
-  const tp = tipo === "MS"
-    ? entryPrice * (1 + tpPercent / 100)
-    : entryPrice * (1 - tpPercent / 100);
+  const tpDistance = entryPrice * (tpPercent / 100);
+  let tp, sl;
 
-  let sl;
-
-  if (slMode === "percent") {
-    sl = tipo === "MS"
-      ? entryPrice * (1 - tpPercent / 100)
-      : entryPrice * (1 + tpPercent / 100);
+  if (slMode === "simetric") {
+    if (tipo === "MS") {
+      tp = entryPrice + tpDistance;
+      sl = entryPrice - tpDistance;
+    } else {
+      tp = entryPrice - tpDistance;
+      sl = entryPrice + tpDistance;
+    }
   } else {
-    // SL basat en la 3a vela
-    sl = tipo === "MS" ? third.low : third.high;
+    // altres modes (per exemple, rang, cos, ATR...)
+    const range = third.high - third.low;
+
+    if (tipo === "MS") {
+      tp = entryPrice + tpDistance;
+      sl = entryPrice - range;
+    } else {
+      tp = entryPrice - tpDistance;
+      sl = entryPrice + range;
+    }
   }
 
   return { tp, sl };
