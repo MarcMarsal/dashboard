@@ -77,8 +77,8 @@ export async function executeBacktest({
 
     // Entrada basada en la 4a vela amb retrocés real
 const entryPrice = isLong
-  ? fourth.open * (1 - retracement / 100)
-  : fourth.open * (1 + retracement / 100);
+  ? fourth.o * (1 - retracement / 100)
+  : fourth.o * (1 + retracement / 100);
 
     // Comprovem si la 4a vela toca l’entrada
     const hasEntry = checkEntry(fourth, entryPrice);
