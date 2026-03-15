@@ -24,10 +24,10 @@ export async function executeBacktest({
 
   // IMPORTANT: ara fem servir ts (BIGINT) en lloc de timestamp_es (TEXT)
   const signals = await db.query(
-    `SELECT symbol, timeframe, tipo, entry, timestamp_es, ts
+    `SELECT symbol, timeframe, tipo, entry, timestamp, timestamp_es
      FROM signals
      WHERE symbol = $1 AND timeframe = $2
-       AND ts BETWEEN $3 AND $4
+       AND timestamp BETWEEN $3 AND $4
      ORDER BY ts ASC`,
     [symbol, timeframe, start, end]
   );
@@ -44,7 +44,7 @@ export async function executeBacktest({
     total++;
 
     // ts és el timestamp real en ms
-    const ts3 = s.ts;
+    const ts3 = s.timestamp;
 
     // Candles basades en ts
     const third = await getThirdCandle(symbol, timeframe, ts3);
