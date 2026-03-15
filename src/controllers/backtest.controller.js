@@ -11,6 +11,8 @@ export async function getStats(req, res) {
   }
 }
 
+
+
 export async function runBacktest(req, res) {
   try {
     const config = req.body;
@@ -23,7 +25,7 @@ export async function runBacktest(req, res) {
     });
 
   } catch (err) {
-    console.error("Error al backtest:", err);
+    console.error("Error al backtest:", err.stack || err);
     res.status(500).json({ ok: false, error: "Error executant el backtest" });
   }
 }
