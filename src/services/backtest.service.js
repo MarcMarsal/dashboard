@@ -1,30 +1,30 @@
 import { db } from "../db.js";
 
-// 3a vela: primera amb timestamp_open > timestamp_2a
-async function getThirdCandle(symbol, timeframe, signalTimestamp) {
+// 3a vela: primera amb timestamp > timestamp_2a
+async function getThirdCandle(symbol, timeframe, ts2) {
   const q = await db.query(
-    `SELECT open, high, low, close, timestamp_open, timestamp_close
+    `SELECT open, high, low, close, timestamp
      FROM candles
      WHERE symbol = $1 AND timeframe = $2
-       AND timestamp_open > $3
-     ORDER BY timestamp_open ASC
+       AND timestamp > $3
+     ORDER BY timestamp ASC
      LIMIT 1`,
-    [symbol, timeframe, signalTimestamp]
+    [symbol, timeframe, ts2]
   );
   return q.rows[0] || null;
 }
 
-// 4a vela: segona amb timestamp_open > timestamp_2a
-async function getFourthCandle(symbol, timeframe, signalTimestamp) {
+// 4a vela: segona amb timestamp > timestamp_2a
+async function getFourthCandle(symbol, timeframe, ts2) {
   const q = await db.query(
-    `SELECT open, high, low, close, timestamp_open, timestamp_close
+    `SELECT open, high, low, close, timestamp
      FROM candles
      WHERE symbol = $1 AND timeframe = $2
-       AND timestamp_open > $3
-     ORDER BY timestamp_open ASC
+       AND timestamp > $3
+     ORDER BY timestamp ASC
      OFFSET 1
      LIMIT 1`,
-    [symbol, timeframe, signalTimestamp]
+    [symbol, timeframe, ts2]
   );
   return q.rows[0] || null;
 }
@@ -111,8 +111,10 @@ export async function executeBacktest({
   for (const s of signals.rows) {
     total++;
 
-    const third = await getThirdCandle(symbol, timeframe, s.timestamp);
-    const fourth = await getFourthCandle(symbol, timeframe, s.timestamp);
+    const ts2 = s.timestamp; // tancament 2a vela
+
+    const third = await getThirdCandle(symbol, timeframe, ts2);
+    const fourth = await getFourthCandle(symbol, timeframe, ts2);
 
     if (!third || !fourth) {
       noEntries++;
