@@ -28,7 +28,7 @@ export async function executeBacktest({
      FROM signals
      WHERE symbol = $1 AND timeframe = $2
        AND timestamp BETWEEN $3 AND $4
-     ORDER BY ts ASC`,
+     ORDER BY timestamp ASC`,
     [symbol, timeframe, start, end]
   );
 
@@ -43,7 +43,7 @@ export async function executeBacktest({
   for (const s of signals.rows) {
     total++;
 
-    // ts és el timestamp real en ms
+    //  és el timestamp real en ms
     const ts3 = s.timestamp;
 
     // Candles basades en ts
