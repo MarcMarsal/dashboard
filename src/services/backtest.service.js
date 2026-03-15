@@ -112,12 +112,14 @@ if (!hasEntry) {
       third
     );
 
-    const { touchedTP, touchedSL, outcome } = checkTouches(
-      s.tipo,
-      fourth,
-      tp,
-      sl
-    );
+    const nextCandles = await getNextCandles(symbol, timeframe, fourth.timestamp);
+
+const { touchedTP, touchedSL, outcome } = checkTouches(
+  s.tipo,
+  nextCandles,
+  tp,
+  sl
+);
 
     if (outcome === "WIN") wins++;
     else if (outcome === "LOSS") losses++;
