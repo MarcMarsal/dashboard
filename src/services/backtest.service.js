@@ -125,7 +125,7 @@ if (!hasEntry) {
     created_at
   ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW())`,
   [
-    s.ts,               // signal_timestamp (BIGINT)
+    s.timestamp,               // signal_timestamp (BIGINT)
     s.timestamp_es,     // timestamp_es (TEXT)
     symbol,
     timeframe,
@@ -143,7 +143,7 @@ if (!hasEntry) {
 );
     details.push({
       timestamp_es: s.timestamp_es,
-      ts: s.ts,
+      ts: s.timestamp,
       entry_original: entryOriginal,
       entry_retracement: entryPrice,
       first,
