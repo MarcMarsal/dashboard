@@ -1,4 +1,4 @@
-import * as db from "../db.js";
+import { db } from "../db.js";
 
 // 3a vela: primera amb timestamp_open > timestamp_2a
 async function getThirdCandle(symbol, timeframe, signalTimestamp) {
