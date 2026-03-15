@@ -66,6 +66,7 @@ export async function executeBacktest({
     const isLong = s.tipo === "MS";
 
    // --- ENTRADA: retrocés sobre el cos de la 3a vela ---
+// --- ENTRADA: retrocés sobre el cos de la 3a vela ---
 const body = Math.abs(third.close - third.open);
 const retraceFraction = retracement / 100;
 const retraceAmount = body * retraceFraction;
@@ -73,12 +74,13 @@ const retraceAmount = body * retraceFraction;
 let entryPrice;
 
 if (isLong) {
-  // LONG: retrocés cap a l'open des del close
+  // MS → 3a vela alcista → retrocés des del close cap a l'open
   entryPrice = third.close - retraceAmount;
 } else {
-  // SHORT: retrocés cap a l'open des del close
-  entryPrice = third.close + retraceAmount;
+  // ES → 3a vela baixista → retrocés des de l'open cap al close
+  entryPrice = third.open + retraceAmount;
 }
+// -----------------------------------------------------
 // -----------------------------------------------------
 
     const hasEntry = checkEntry(fourth, entryPrice);
