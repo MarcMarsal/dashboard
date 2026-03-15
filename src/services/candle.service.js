@@ -64,6 +64,7 @@ function computeTargets(tipo, entryPrice, tpPercent, slMode) {
 
   return { tp, sl };
 }
+
 // Comprovar si toca TP o SL
 export function checkTouches(tipo, fourth, tp, sl) {
   const isLong = tipo === "MS";
