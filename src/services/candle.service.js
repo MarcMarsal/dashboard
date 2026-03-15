@@ -21,7 +21,6 @@ async function getCandle(symbol, timeframe, ts) {
   return r.rows[0] || null;
 }
 
-// 1a, 2a, 3a, 4a vela
 export async function getFirstCandle(symbol, timeframe, ts3) {
   const ms = tfToMs(timeframe);
   return getCandle(symbol, timeframe, ts3 - 3 * ms);
