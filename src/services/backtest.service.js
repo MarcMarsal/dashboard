@@ -172,3 +172,27 @@ export async function executeBacktest({
     details
   };
 }
+
+export async function fetchStats() {
+  const r = await db.query(`
+    SELECT
+      COUNT(*) AS total,
+      SUM(CASE WHEN result = 'WIN' THEN 1 ELSE 0 END) AS wins,
+      SUM(CASE WHEN result = 'LOSS' THEN 1 ELSE 0 END) AS losses,
+      SUM(CASE WHEN result = 'NEUTRAL' THEN 1 ELSE 0 END) AS neutrals
+    FROM backtest_results
+  `);
+
+  const s = r.rows[0];
+
+  const winrate =
+    s.wins > 0 ? ((s.wins / (s.wins + s.losses + s.neutrals)) * 100).toFixed(2) : 0;
+
+  return {
+    total: Number(s.total),
+    wins: Number(s.wins),
+    losses: Number(s.losses),
+    neutrals: Number(s.neutrals),
+    winrate
+  };
+}
