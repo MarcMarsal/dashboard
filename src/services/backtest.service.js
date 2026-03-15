@@ -80,14 +80,7 @@ if (isLong) {
   // ES: entrada = close 3a + % cos
   entryPrice = third.close + retraceAmount;
 }
-// -----------------------------------------------------
 
-const hasEntry = checkEntry(fourth, entryPrice);
-if (!hasEntry) {
-  noEntries++;
-  continue;
-}
-// -----------------------------------------------------
 
     const hasEntry = checkEntry(fourth, entryPrice);
     if (!hasEntry) {
