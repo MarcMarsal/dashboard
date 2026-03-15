@@ -10,6 +10,7 @@ import {
 } from "./candle.service.js";
 
 // BACKTEST PRINCIPAL
+// BACKTEST PRINCIPAL
 export async function executeBacktest({
   symbol,
   timeframe,
@@ -22,7 +23,7 @@ export async function executeBacktest({
   // Esborrem resultats anteriors
   await db.query("DELETE FROM backtest_results");
 
-  // IMPORTANT: ara fem servir ts (BIGINT) en lloc de timestamp_es (TEXT)
+  // Carreguem signals
   const signals = await db.query(
     `SELECT symbol, timeframe, tipo, entry, timestamp, timestamp_es
      FROM signals
@@ -31,13 +32,14 @@ export async function executeBacktest({
      ORDER BY timestamp ASC`,
     [symbol, timeframe, start, end]
   );
+
   console.log("SIGNALS DEBUG:", {
-  symbol,
-  timeframe,
-  start,
-  end,
-  count: signals.rows.length
-});
+    symbol,
+    timeframe,
+    start,
+    end,
+    count: signals.rows.length
+  });
 
   let total = 0;
   let entries = 0;
@@ -50,22 +52,21 @@ export async function executeBacktest({
   for (const s of signals.rows) {
     total++;
 
-    //  és el timestamp real en ms
     const ts3 = s.timestamp;
 
-    // Candles basades en ts
+    // Candles
     const third = await getThirdCandle(symbol, timeframe, ts3);
     const second = await getSecondCandle(symbol, timeframe, ts3);
     const first = await getFirstCandle(symbol, timeframe, ts3);
     const fourth = await getFourthCandle(symbol, timeframe, ts3);
 
     console.log("CANDLES DEBUG:", {
-  ts3,
-  first: !!first,
-  second: !!second,
-  third: !!third,
-  fourth: !!fourth
-});
+      ts3,
+      first: !!first,
+      second: !!second,
+      third: !!third,
+      fourth: !!fourth
+    });
 
     if (!third || !second || !first || !fourth) {
       noEntries++;
@@ -74,26 +75,31 @@ export async function executeBacktest({
 
     const isLong = s.tipo === "MS";
 
-   // Entrada basada en la 4a vela (entrada realista)
-const entryPrice = fourth.open;
+    // Entrada real amb retrocés (com tu operes)
+    const entryOriginal = Number(s.entry);
+    const entryPrice = isLong
+      ? entryOriginal * (1 - retracement / 100)
+      : entryOriginal * (1 + retracement / 100);
 
-// Comprovem si la 4a vela toca l'entrada
-const hasEntry = checkEntry(fourth, entryPrice);
-if (!hasEntry) {
-  noEntries++;
-  continue;
-}
+    // Comprovem si la 4a vela toca l’entrada
+    const hasEntry = checkEntry(fourth, entryPrice);
+    if (!hasEntry) {
+      noEntries++;
+      continue;
+    }
 
     entries++;
 
+    // TP i SL exactament com al gràfic
     const { tp, sl } = computeTargets(
       s.tipo,
       entryPrice,
       tpPercent,
       slMode,
-      second
+      third // SL basat en la 3a vela
     );
 
+    // Comprovem TP/SL
     const { touchedTP, touchedSL, outcome } = checkTouches(
       s.tipo,
       fourth,
@@ -105,47 +111,47 @@ if (!hasEntry) {
     else if (outcome === "LOSS") losses++;
     else neutrals++;
 
-    // Guardem també ts per tenir el timestamp real
+    // Guardem resultat
     await db.query(
-  `INSERT INTO backtest_results (
-    signal_timestamp,
-    timestamp_es,
-    symbol,
-    timeframe,
-    tipo,
-    retracement,
-    tp_percent,
-    sl_mode,
-    entry_price,
-    tp_price,
-    sl_price,
-    result,
-    touched_tp,
-    touched_sl,
-    created_at
-  ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW())`,
-  [
-    s.timestamp,               // signal_timestamp (BIGINT)
-    s.timestamp_es,     // timestamp_es (TEXT)
-    symbol,
-    timeframe,
-    s.tipo,
-    retracement,
-    tpPercent,
-    slMode,
-    entryPrice,
-    tp,
-    sl,
-    outcome,
-    touchedTP,
-    touchedSL
-  ]
-);
+      `INSERT INTO backtest_results (
+        signal_timestamp,
+        timestamp_es,
+        symbol,
+        timeframe,
+        tipo,
+        retracement,
+        tp_percent,
+        sl_mode,
+        entry_price,
+        tp_price,
+        sl_price,
+        result,
+        touched_tp,
+        touched_sl,
+        created_at
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW())`,
+      [
+        s.timestamp,
+        s.timestamp_es,
+        symbol,
+        timeframe,
+        s.tipo,
+        retracement,
+        tpPercent,
+        slMode,
+        entryPrice,
+        tp,
+        sl,
+        outcome,
+        touchedTP,
+        touchedSL
+      ]
+    );
+
     details.push({
       timestamp_es: s.timestamp_es,
       ts: s.timestamp,
-      //entry_original: entryOriginal,
-      entry_retracement: entryPrice,
+      entry_price: entryPrice,
       first,
       second,
       third,
@@ -171,7 +177,6 @@ if (!hasEntry) {
     details
   };
 }
-
 // STATS PER AL DASHBOARD
 export async function fetchStats() {
   const r = await db.query(`
