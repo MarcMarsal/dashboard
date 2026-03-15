@@ -42,7 +42,7 @@ export async function getFourthCandle(symbol, timeframe, ts3) {
 
 // Comprovar si la 4a vela toca el preu d'entrada
 export function checkEntry(fourth, entryPrice) {
-  return fourth.l <= entryPrice && fourth.h >= entryPrice;
+  return fourth.low <= entryPrice && fourth.high >= entryPrice;
 }
 
 // Calcular TP i SL
@@ -59,7 +59,7 @@ export function computeTargets(tipo, entryPrice, tpPercent, slMode, third) {
       : entryPrice * (1 + tpPercent / 100);
   } else {
     // SL basat en la 3a vela
-    sl = tipo === "MS" ? third.l : third.h;
+    sl = tipo === "MS" ? third.low : third.high;
   }
 
   return { tp, sl };
@@ -70,12 +70,12 @@ export function checkTouches(tipo, fourth, tp, sl) {
   const isLong = tipo === "MS";
 
   const touchedTP = isLong
-    ? fourth.h >= tp
-    : fourth.l <= tp;
+    ? fourth.high >= tp
+    : fourth.low <= tp;
 
   const touchedSL = isLong
-    ? fourth.l <= sl
-    : fourth.h >= sl;
+    ? fourth.low <= sl
+    : fourth.high >= sl;
 
   let outcome = "NEUTRAL";
   if (touchedTP) outcome = "WIN";
