@@ -97,21 +97,31 @@ export function computeTargets(tipo, entryPrice, tpPercent, slMode, third) {
   return { tp, sl };
 }
 
-// Comprovar si toca TP o SL
-export function checkTouches(tipo, fourth, tp, sl) {
-  const isLong = tipo === "MS";
+export async function getNextCandles(symbol, timeframe, ts4) {
+  const r = await db.query(
+    `SELECT * FROM candles
+     WHERE symbol = $1 AND timeframe = $2
+       AND timestamp > $3
+     ORDER BY timestamp ASC`,
+    [symbol, timeframe, ts4]
+  );
+  return r.rows;
+}
 
-  const touchedTP = isLong
-    ? fourth.high >= tp
-    : fourth.low <= tp;
+export function checkTouches(tipo, candles, tp, sl) {
+  if (candles.length === 0) {
+    return { touchedTP: false, touchedSL: false, outcome: "NEUTRAL" };
+  }
 
-  const touchedSL = isLong
-    ? fourth.low <= sl
-    : fourth.high >= sl;
+  for (const c of candles) {
+    if (tipo === "MS") {
+      if (c.high >= tp) return { touchedTP: true, touchedSL: false, outcome: "WIN" };
+      if (c.low <= sl)  return { touchedTP: false, touchedSL: true, outcome: "LOSS" };
+    } else {
+      if (c.low <= tp)  return { touchedTP: true, touchedSL: false, outcome: "WIN" };
+      if (c.high >= sl) return { touchedTP: false, touchedSL: true, outcome: "LOSS" };
+    }
+  }
 
-  let outcome = "NEUTRAL";
-  if (touchedTP) outcome = "WIN";
-  else if (touchedSL) outcome = "LOSS";
-
-  return { touchedTP, touchedSL, outcome };
+  return { touchedTP: false, touchedSL: false, outcome: "NEUTRAL" };
 }
