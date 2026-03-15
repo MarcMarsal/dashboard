@@ -6,13 +6,15 @@ function tfToMs(tf) {
   return timeframeToSeconds(tf) * 1000;
 }
 
-// Obtenir una vela exacta pel seu timestamp
 async function getCandle(symbol, timeframe, ts) {
   const r = await db.query(
     `SELECT symbol, timeframe, open, high, low, close, volume,
             timestamp, timestamp_es, date_es
      FROM candles
-     WHERE symbol = $1 AND timeframe = $2 AND timestamp = $3
+     WHERE symbol = $1 
+       AND timeframe = $2 
+       AND timestamp <= $3
+     ORDER BY timestamp DESC
      LIMIT 1`,
     [symbol, timeframe, ts]
   );
