@@ -46,7 +46,7 @@ export function checkEntry(fourth, entryPrice) {
 }
 
 // Calcular TP i SL
-function computeTargets(tipo, entryPrice, tpPercent, slMode) {
+export function computeTargets(tipo, entryPrice, tpPercent, slMode, fourth) {
   const tp = tipo === "MS"
     ? entryPrice * (1 + tpPercent / 100)
     : entryPrice * (1 - tpPercent / 100);
