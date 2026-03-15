@@ -65,8 +65,7 @@ export async function executeBacktest({
 
     const isLong = s.tipo === "MS";
 
-   // --- ENTRADA: retrocés sobre el cos de la 3a vela ---
-const isLong = s.tipo === "MS";
+  
 
 // --- ENTRADA: retrocés sobre el cos de la 3a vela ---
 const body = Math.abs(third.close - third.open);
