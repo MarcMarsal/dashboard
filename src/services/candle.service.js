@@ -46,27 +46,24 @@ export function checkEntry(fourth, entryPrice) {
 }
 
 // Calcular TP i SL
-export function computeTargets(tipo, entryPrice, tpPercent, slMode, second) {
-  const isLong = tipo === "MS";
-
-  const tp = isLong
+function computeTargets(tipo, entryPrice, tpPercent, slMode) {
+  const tp = tipo === "MS"
     ? entryPrice * (1 + tpPercent / 100)
     : entryPrice * (1 - tpPercent / 100);
 
   let sl;
 
-  if (slMode === "second") {
-    sl = isLong ? second.low : second.high;
+  if (slMode === "percent") {
+    sl = tipo === "MS"
+      ? entryPrice * (1 - tpPercent / 100)
+      : entryPrice * (1 + tpPercent / 100);
   } else {
-    const slPercent = 0.5; // pots ajustar-ho
-    sl = isLong
-      ? entryPrice * (1 - slPercent / 100)
-      : entryPrice * (1 + slPercent / 100);
+    // mode "candle": SL basat en la 4a vela
+    sl = tipo === "MS" ? fourth.low : fourth.high;
   }
 
   return { tp, sl };
 }
-
 // Comprovar si toca TP o SL
 export function checkTouches(tipo, fourth, tp, sl) {
   const isLong = tipo === "MS";
