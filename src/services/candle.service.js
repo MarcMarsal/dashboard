@@ -7,30 +7,20 @@ function tfToMs(tf) {
 }
 
 async function getCandle(symbol, timeframe, ts) {
-  const tfMs = timeframeToSeconds(timeframe) * 1000;
-
-  console.log("getCandle DEBUG:", {
-    symbol,
-    timeframe,
-    ts,
-    tfMs
-  });
-
   const r = await db.query(
     `SELECT symbol, timeframe, open, high, low, close, volume,
             timestamp, timestamp_es, date_es
      FROM candles
      WHERE symbol = $1
        AND timeframe = $2
-       AND timestamp > ($3::bigint - $4::bigint)
-       AND timestamp <= $3::bigint
-     ORDER BY timestamp DESC
+       AND timestamp = $3
      LIMIT 1`,
-    [symbol, timeframe, ts, tfMs]
+    [symbol, timeframe, ts]
   );
 
   return r.rows[0] || null;
 }
+
 // 1a, 2a, 3a, 4a vela
 export async function getFirstCandle(symbol, timeframe, ts3) {
   const ms = tfToMs(timeframe);
