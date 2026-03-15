@@ -59,6 +59,14 @@ export async function executeBacktest({
     const first = await getFirstCandle(symbol, timeframe, ts3);
     const fourth = await getFourthCandle(symbol, timeframe, ts3);
 
+    console.log("CANDLES DEBUG:", {
+  ts3,
+  first: !!first,
+  second: !!second,
+  third: !!third,
+  fourth: !!fourth
+});
+
     if (!third || !second || !first || !fourth) {
       noEntries++;
       continue;
