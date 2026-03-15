@@ -68,6 +68,9 @@ export async function executeBacktest({
   
 
 // --- ENTRADA: retrocés sobre el cos de la 3a vela ---
+const isLong = s.tipo === "MS";
+
+// --- ENTRADA: retrocés sobre el cos de la 3a vela ---
 const body = Math.abs(third.close - third.open);
 const retraceFraction = retracement / 100;
 const retraceAmount = body * retraceFraction;
@@ -80,15 +83,13 @@ if (isLong) {
   // ES: entrada = close 3a + % cos
   entryPrice = third.close + retraceAmount;
 }
+// -----------------------------------------------------
 
-
-    const hasEntry = checkEntry(fourth, entryPrice);
-    if (!hasEntry) {
-      noEntries++;
-      continue;
-    }
-
-    entries++;
+const hasEntry = checkEntry(fourth, entryPrice);
+if (!hasEntry) {
+  noEntries++;
+  continue;
+}   entries++;
 
     const { tp, sl } = computeTargets(
       s.tipo,
