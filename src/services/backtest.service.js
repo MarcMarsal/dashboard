@@ -63,7 +63,7 @@ export async function executeBacktest({
       continue;
     }
 
-    const isLong = s.tipo === "MS";
+
 
   
 
