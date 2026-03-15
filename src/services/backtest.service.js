@@ -30,13 +30,13 @@ export async function executeBacktest({
     [symbol, timeframe, start, end]
   );
 
-  console.log("SIGNALS DEBUG:", {
-    symbol,
-    timeframe,
-    start,
-    end,
-    count: signals.rows.length
-  });
+  //console.log("SIGNALS DEBUG:", {
+  //  symbol,
+  //  timeframe,
+  //  start,
+  //  end,
+  //  count: signals.rows.length
+  //});
 
   let total = 0;
   let entries = 0;
@@ -56,7 +56,7 @@ export async function executeBacktest({
     const first = await getFirstCandle(symbol, timeframe, ts3);
     const fourth = await getFourthCandle(symbol, timeframe, ts3);
 
-    console.log("DEBUG FOURTH CANDLE:", fourth);
+    //console.log("DEBUG FOURTH CANDLE:", fourth);
 
     if (!third || !second || !first || !fourth) {
       noEntries++;
@@ -84,7 +84,7 @@ if (isLong) {
   entryPrice = third.close + retraceAmount;
 }
 // -----------------------------------------------------
-if (s.timestamp === 1773532800000) {
+//if (s.timestamp === 1773532800000) {
   console.log("DEBUG ES 111", {
     tipo: s.tipo,
     open3: third.open,
@@ -96,7 +96,7 @@ if (s.timestamp === 1773532800000) {
     fourthLow: fourth.low,
     fourthHigh: fourth.high
   });
-}
+//}
 
 const hasEntry = checkEntry(fourth, entryPrice);
 if (!hasEntry) {
