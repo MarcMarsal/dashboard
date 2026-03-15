@@ -66,21 +66,28 @@ export async function executeBacktest({
     const isLong = s.tipo === "MS";
 
    // --- ENTRADA: retrocés sobre el cos de la 3a vela ---
+const isLong = s.tipo === "MS";
+
 // --- ENTRADA: retrocés sobre el cos de la 3a vela ---
 const body = Math.abs(third.close - third.open);
 const retraceFraction = retracement / 100;
 const retraceAmount = body * retraceFraction;
 
 let entryPrice;
-
 if (isLong) {
-  // MS → 3a vela alcista → retrocés des del close cap a l'open
+  // MS: entrada = close 3a - % cos
   entryPrice = third.close - retraceAmount;
 } else {
-  // ES → 3a vela baixista → retrocés des de l'open cap al close
-  entryPrice = third.open + retraceAmount;
+  // ES: entrada = close 3a + % cos
+  entryPrice = third.close + retraceAmount;
 }
 // -----------------------------------------------------
+
+const hasEntry = checkEntry(fourth, entryPrice);
+if (!hasEntry) {
+  noEntries++;
+  continue;
+}
 // -----------------------------------------------------
 
     const hasEntry = checkEntry(fourth, entryPrice);
