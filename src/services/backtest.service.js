@@ -10,7 +10,6 @@ import {
 } from "./candle.service.js";
 
 // BACKTEST PRINCIPAL
-// BACKTEST PRINCIPAL
 export async function executeBacktest({
   symbol,
   timeframe,
@@ -20,10 +19,8 @@ export async function executeBacktest({
   slMode,
   retracement
 }) {
-  // Esborrem resultats anteriors
   await db.query("DELETE FROM backtest_results");
 
-  // Carreguem signals
   const signals = await db.query(
     `SELECT symbol, timeframe, tipo, entry, timestamp, timestamp_es
      FROM signals
@@ -54,13 +51,12 @@ export async function executeBacktest({
 
     const ts3 = s.timestamp;
 
-    // Candles
     const third = await getThirdCandle(symbol, timeframe, ts3);
     const second = await getSecondCandle(symbol, timeframe, ts3);
     const first = await getFirstCandle(symbol, timeframe, ts3);
     const fourth = await getFourthCandle(symbol, timeframe, ts3);
 
-   console.log("DEBUG FOURTH CANDLE:", fourth);
+    console.log("DEBUG FOURTH CANDLE:", fourth);
 
     if (!third || !second || !first || !fourth) {
       noEntries++;
@@ -69,12 +65,21 @@ export async function executeBacktest({
 
     const isLong = s.tipo === "MS";
 
-    // Entrada basada en la 4a vela amb retrocés real
-const entryPrice = isLong
-  ? fourth.open * (1 - retracement / 100)
-  : fourth.open * (1 + retracement / 100);
+    // --- ENTRADA: retrocés sobre el cos de la 3a vela ---
+    const body = Math.abs(third.close - third.open);
+    const retraceFraction = retracement / 100; // p.ex. 20 → 0.2
+    const retraceAmount = body * retraceFraction;
 
-    // Comprovem si la 4a vela toca l’entrada
+    let entryPrice;
+    if (isLong) {
+      // LONG: retrocés cap a l'open des del close
+      entryPrice = third.close - retraceAmount;
+    } else {
+      // SHORT: retrocés cap a l'open des del close
+      entryPrice = third.close + retraceAmount;
+    }
+    // -----------------------------------------------------
+
     const hasEntry = checkEntry(fourth, entryPrice);
     if (!hasEntry) {
       noEntries++;
@@ -83,16 +88,14 @@ const entryPrice = isLong
 
     entries++;
 
-    // TP i SL exactament com al gràfic
     const { tp, sl } = computeTargets(
       s.tipo,
       entryPrice,
       tpPercent,
       slMode,
-      third // SL basat en la 3a vela
+      third
     );
 
-    // Comprovem TP/SL
     const { touchedTP, touchedSL, outcome } = checkTouches(
       s.tipo,
       fourth,
@@ -104,7 +107,6 @@ const entryPrice = isLong
     else if (outcome === "LOSS") losses++;
     else neutrals++;
 
-    // Guardem resultat
     await db.query(
       `INSERT INTO backtest_results (
         signal_timestamp,
@@ -168,29 +170,5 @@ const entryPrice = isLong
     winRate: entries > 0 ? (wins / entries) * 100 : 0,
     entryRate: total > 0 ? (entries / total) * 100 : 0,
     details
-  };
-}
-// STATS PER AL DASHBOARD
-export async function fetchStats() {
-  const r = await db.query(`
-    SELECT
-      COUNT(*) AS total,
-      SUM(CASE WHEN result = 'WIN' THEN 1 ELSE 0 END) AS wins,
-      SUM(CASE WHEN result = 'LOSS' THEN 1 ELSE 0 END) AS losses,
-      SUM(CASE WHEN result = 'NEUTRAL' THEN 1 ELSE 0 END) AS neutrals
-    FROM backtest_results
-  `);
-
-  const s = r.rows[0];
-
-  const winrate =
-    s.wins > 0 ? ((s.wins / (s.wins + s.losses + s.neutrals)) * 100).toFixed(2) : 0;
-
-  return {
-    total: Number(s.total),
-    wins: Number(s.wins),
-    losses: Number(s.losses),
-    neutrals: Number(s.neutrals),
-    winrate
   };
 }
