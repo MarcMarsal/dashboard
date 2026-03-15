@@ -81,7 +81,7 @@ export function computeTargets(tipo, entryPrice, tpPercent, slMode, third) {
   const tpDistance = entryPrice * (tpPercent / 100);
   let tp, sl;
 
-  if (slMode === "simetric") {
+  if (slMode === "symmetric") {
     if (tipo === "MS") {
       tp = entryPrice + tpDistance;
       sl = entryPrice - tpDistance;
