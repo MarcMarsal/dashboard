@@ -42,7 +42,7 @@ export async function getFourthCandle(symbol, timeframe, ts3) {
 
 // Comprovar si la 4a vela toca el preu d'entrada
 export function checkEntry(fourth, entryPrice) {
-  return fourth.low <= entryPrice && fourth.high >= entryPrice;
+  return fourth.l <= entryPrice && fourth.h >= entryPrice;
 }
 
 // Calcular TP i SL
