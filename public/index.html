@@ -112,14 +112,25 @@
       });
     }
 
-  async function runBacktest() {
+  <script>
+async function runBacktest() {
   const symbol = document.getElementById("symbol").value;
   const timeframe = document.getElementById("timeframe").value;
   const period = document.getElementById("period").value;
 
   const retracement = Number(document.getElementById("retracement").value);
-  const tp = Number(document.getElementById("tp").value);
+  const tpPercent = Number(document.getElementById("tp").value);
   const slMode = document.getElementById("slMode").value;
+
+  // Convertir period → start i end
+  const now = Date.now();
+  let start;
+
+  if (period === "1d") start = now - 1 * 24 * 60 * 60 * 1000;
+  if (period === "1w") start = now - 7 * 24 * 60 * 60 * 1000;
+  if (period === "1m") start = now - 30 * 24 * 60 * 60 * 1000;
+
+  const end = now;
 
   await fetch("/backtest/run", {
     method: "POST",
@@ -127,18 +138,19 @@
     body: JSON.stringify({
       symbol,
       timeframe,
-      period,
+      start,
+      end,
       retracement,
-      tp,
+      tpPercent,
       slMode
     })
   });
 
   loadStats();
 }
+</script>
 
 
-  </script>
 
 </body>
 </html>
