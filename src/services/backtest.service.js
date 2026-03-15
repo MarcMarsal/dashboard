@@ -93,41 +93,40 @@ export async function executeBacktest({
 
     // Guardem també ts per tenir el timestamp real
     await db.query(
-      `INSERT INTO backtest_results (
-        signal_timestamp,
-        timestamp_es,
-        symbol,
-        timeframe,
-        tipo,
-        retracement,
-        tp_percent,
-        sl_mode,
-        entry_price,
-        tp_price,
-        sl_price,
-        result,
-        touched_tp,
-        touched_sl,
-        created_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW())`,
-      [
-        s.ts,               // timestamp real en ms
-        s.timestamp_es,     // format humà original
-        symbol,
-        timeframe,
-        s.tipo,
-        retracement,
-        tpPercent,
-        slMode,
-        entryPrice,
-        tp,
-        sl,
-        outcome,
-        touchedTP,
-        touchedSL
-      ]
-    );
-
+  `INSERT INTO backtest_results (
+    signal_timestamp,
+    timestamp_es,
+    symbol,
+    timeframe,
+    tipo,
+    retracement,
+    tp_percent,
+    sl_mode,
+    entry_price,
+    tp_price,
+    sl_price,
+    result,
+    touched_tp,
+    touched_sl,
+    created_at
+  ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW())`,
+  [
+    s.ts,               // signal_timestamp (BIGINT)
+    s.timestamp_es,     // timestamp_es (TEXT)
+    symbol,
+    timeframe,
+    s.tipo,
+    retracement,
+    tpPercent,
+    slMode,
+    entryPrice,
+    tp,
+    sl,
+    outcome,
+    touchedTP,
+    touchedSL
+  ]
+);
     details.push({
       timestamp_es: s.timestamp_es,
       ts: s.ts,
