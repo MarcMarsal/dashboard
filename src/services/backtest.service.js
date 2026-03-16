@@ -49,11 +49,13 @@ export async function executeBacktest({
     const first = await getFirstCandle(symbol, timeframe, ts3);
     const fourth = await getFourthCandle(symbol, timeframe, ts3);
 
+    const hourSegment = getHourSegment(new Date(s.timestamp_es));
+
+    // -------------------------------
     // NO ENTRY: falta alguna candle
+    // -------------------------------
     if (!third || !second || !first || !fourth) {
       noEntries++;
-
-      const hourSegment = getHourSegment(new Date(s.timestamp_es));
 
       await db.query(
         `INSERT INTO backtest_results (
@@ -75,7 +77,7 @@ export async function executeBacktest({
           is_entry,
           created_at
         ) VALUES (
-          $1,$2,$3,$4,$5,$6,$7,$8,null,null,null,'NO_ENTRY',false,false,$9,false,NOW()
+          $1,$2,$3,$4,$5,$6,$7,$8,0,0,0,'NO_ENTRY',false,false,$9,false,NOW()
         )`,
         [
           s.timestamp,
@@ -93,7 +95,9 @@ export async function executeBacktest({
       continue;
     }
 
-    // Càlcul entrada
+    // -------------------------------
+    // CÀLCUL ENTRADA
+    // -------------------------------
     const isLong = s.tipo === "MS";
     const body = Math.abs(third.close - third.open);
     const retraceFraction = retracement / 100;
@@ -108,11 +112,11 @@ export async function executeBacktest({
 
     const hasEntry = checkEntry(fourth, entryPrice);
 
-    // NO ENTRY: no toca el nivell d’entrada
+    // -------------------------------
+    // NO ENTRY: no toca el nivell
+    // -------------------------------
     if (!hasEntry) {
       noEntries++;
-
-      const hourSegment = getHourSegment(new Date(s.timestamp_es));
 
       await db.query(
         `INSERT INTO backtest_results (
@@ -134,7 +138,7 @@ export async function executeBacktest({
           is_entry,
           created_at
         ) VALUES (
-          $1,$2,$3,$4,$5,$6,$7,$8,null,null,null,'NO_ENTRY',false,false,$9,false,NOW()
+          $1,$2,$3,$4,$5,$6,$7,$8,0,0,0,'NO_ENTRY',false,false,$9,false,NOW()
         )`,
         [
           s.timestamp,
@@ -152,7 +156,9 @@ export async function executeBacktest({
       continue;
     }
 
+    // -------------------------------
     // ENTRADA REAL
+    // -------------------------------
     entries++;
 
     const { tp, sl } = computeTargets(
@@ -175,8 +181,6 @@ export async function executeBacktest({
     if (outcome === "WIN") wins++;
     else if (outcome === "LOSS") losses++;
     else neutrals++;
-
-    const hourSegment = getHourSegment(new Date(s.timestamp_es));
 
     await db.query(
       `INSERT INTO backtest_results (
@@ -278,17 +282,17 @@ function getHourSegment(date) {
   const hour = date.getHours();
   const day = date.getDay(); // 0 = diumenge, 6 = dissabte
 
-  // Cap de setmana
   if (day === 6) return "dissabte";
   if (day === 0 && hour < 18) return "diumenge_mati";
   if (day === 0 && hour >= 18) return "diumenge_tarda";
 
-  // Dies laborables
   if (hour >= 9 && hour < 12) return "mati_eu";
   if (hour >= 12 && hour < 14) return "migdia_eu";
   if (hour >= 14 && hour < 16) return "pre_ws";
   if (hour >= 16 && hour < 18) return "tarda_eu";
   if (hour >= 18 && hour < 24) return "nit_eu";
   return "nit_matinada";
+}
+
 }
 
