@@ -159,6 +159,9 @@
     });
 
     loadStats();
+   
+    loadSegmentReport();
+
   }
 
   // opcional: carregar stats en entrar
@@ -216,8 +219,58 @@
     html += "</tbody></table>";
     container.innerHTML = html;
   });
-</script>
 
+  
+
+</script>
+<script>
+async function loadSegmentReport() {
+  const res = await fetch("/backtest/report");
+  const rows = await res.json();
+
+  if (!rows.length) {
+    document.getElementById("segmentReport").innerHTML = "<p>No hi ha dades.</p>";
+    return;
+  }
+
+  let html = `
+    <table border="1" cellpadding="5" cellspacing="0">
+      <thead>
+        <tr>
+          <th>Segment</th>
+          <th>Total senyals</th>
+          <th>Entrades</th>
+          <th>No entrades</th>
+          <th>Wins</th>
+          <th>Losses</th>
+          <th>Neutrals</th>
+          <th>Winrate</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  for (const r of rows) {
+    const winrate = r.entries > 0 ? ((r.wins / r.entries) * 100).toFixed(1) : "0";
+
+    html += `
+      <tr>
+        <td>${r.hour_segment}</td>
+        <td>${r.total_signals}</td>
+        <td>${r.entries}</td>
+        <td>${r.no_entries}</td>
+        <td>${r.wins}</td>
+        <td>${r.losses}</td>
+        <td>${r.neutrals}</td>
+        <td>${winrate}%</td>
+      </tr>
+    `;
+  }
+
+  html += "</tbody></table>";
+  document.getElementById("segmentReport").innerHTML = html;
+}
+</script>
   
 </body>
 </html>
