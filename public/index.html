@@ -206,9 +206,10 @@
         <tr>
           <td>${r.timestamp_es}</td>
           <td>${r.tipo}</td>
-          <td>${Number(r.entry_price).toFixed(4)}</td>
-          <td>${Number(r.tp_price).toFixed(4)}</td>
-          <td>${Number(r.sl_price).toFixed(4)}</td>
+          <td>${r.entry_price ? Number(r.entry_price).toFixed(4) : "-"}</td>
+          <td>${r.tp_price ? Number(r.tp_price).toFixed(4) : "-"}</td>
+          <td>${r.sl_price ? Number(r.sl_price).toFixed(4) : "-"}</td>
+
           <td>${r.result}</td>
           <td>${r.touched_tp ? "Yes" : "No"}</td>
           <td>${r.touched_sl ? "Yes" : "No"}</td>
