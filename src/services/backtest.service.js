@@ -38,183 +38,188 @@ export async function executeBacktest({
   let losses = 0;
   let neutrals = 0;
   const details = [];
-for (const s of signals.rows) {
-  total++;
 
-  const ts3 = s.timestamp;
+  for (const s of signals.rows) {
+    total++;
 
-  const third = await getThirdCandle(symbol, timeframe, ts3);
-  const second = await getSecondCandle(symbol, timeframe, ts3);
-  const first = await getFirstCandle(symbol, timeframe, ts3);
-  const fourth = await getFourthCandle(symbol, timeframe, ts3);
+    const ts3 = s.timestamp;
 
-  if (!third || !second || !first || !fourth) {
-    noEntries++;
+    const third = await getThirdCandle(symbol, timeframe, ts3);
+    const second = await getSecondCandle(symbol, timeframe, ts3);
+    const first = await getFirstCandle(symbol, timeframe, ts3);
+    const fourth = await getFourthCandle(symbol, timeframe, ts3);
 
-    const hourSegment = getHourSegment(new Date(s.timestamp_es));
+    // NO ENTRY: falta alguna candle
+    if (!third || !second || !first || !fourth) {
+      noEntries++;
 
-    await db.query(
-      `INSERT INTO backtest_results (
-        signal_timestamp,
-        timestamp_es,
-        symbol,
-        timeframe,
-        tipo,
-        retracement,
-        tp_percent,
-        sl_mode,
-        entry_price,
-        tp_price,
-        sl_price,
-        result,
-        touched_tp,
-        touched_sl,
-        hour_segment,
-        is_entry,
-        created_at
-      ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,null,null,null,'NO_ENTRY',false,false,$9,false,NOW()
-      )`,
-      [
-        s.timestamp,
-        s.timestamp_es,
-        symbol,
-        timeframe,
-        s.tipo,
-        retracement,
-        tpPercent,
-        slMode,
-        hourSegment
-      ]
-    );
+      const hourSegment = getHourSegment(new Date(s.timestamp_es));
 
-    continue;
-  }
+      await db.query(
+        `INSERT INTO backtest_results (
+          signal_timestamp,
+          timestamp_es,
+          symbol,
+          timeframe,
+          tipo,
+          retracement,
+          tp_percent,
+          sl_mode,
+          entry_price,
+          tp_price,
+          sl_price,
+          result,
+          touched_tp,
+          touched_sl,
+          hour_segment,
+          is_entry,
+          created_at
+        ) VALUES (
+          $1,$2,$3,$4,$5,$6,$7,$8,null,null,null,'NO_ENTRY',false,false,$9,false,NOW()
+        )`,
+        [
+          s.timestamp,
+          s.timestamp_es,
+          symbol,
+          timeframe,
+          s.tipo,
+          retracement,
+          tpPercent,
+          slMode,
+          hourSegment
+        ]
+      );
 
-  const isLong = s.tipo === "MS";
-  const body = Math.abs(third.close - third.open);
-  const retraceFraction = retracement / 100;
-  const retraceAmount = body * retraceFraction;
+      continue;
+    }
 
-  let entryPrice;
-  if (isLong) {
-    entryPrice = third.close - retraceAmount;
-  } else {
-    entryPrice = third.close + retraceAmount;
-  }
+    // Càlcul entrada
+    const isLong = s.tipo === "MS";
+    const body = Math.abs(third.close - third.open);
+    const retraceFraction = retracement / 100;
+    const retraceAmount = body * retraceFraction;
 
-  const hasEntry = checkEntry(fourth, entryPrice);
-  if (!hasEntry) {
-    noEntries++;
+    let entryPrice;
+    if (isLong) {
+      entryPrice = third.close - retraceAmount;
+    } else {
+      entryPrice = third.close + retraceAmount;
+    }
 
-    const hourSegment = getHourSegment(new Date(s.timestamp_es));
+    const hasEntry = checkEntry(fourth, entryPrice);
 
-    await db.query(
-      `INSERT INTO backtest_results (
-        signal_timestamp,
-        timestamp_es,
-        symbol,
-        timeframe,
-        tipo,
-        retracement,
-        tp_percent,
-        sl_mode,
-        entry_price,
-        tp_price,
-        sl_price,
-        result,
-        touched_tp,
-        touched_sl,
-        hour_segment,
-        is_entry,
-        created_at
-      ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,null,null,null,'NO_ENTRY',false,false,$9,false,NOW()
-      )`,
-      [
-        s.timestamp,
-        s.timestamp_es,
-        symbol,
-        timeframe,
-        s.tipo,
-        retracement,
-        tpPercent,
-        slMode,
-        hourSegment
-      ]
-    );
+    // NO ENTRY: no toca el nivell d’entrada
+    if (!hasEntry) {
+      noEntries++;
 
-    continue;
-  }
+      const hourSegment = getHourSegment(new Date(s.timestamp_es));
 
-  entries++;
+      await db.query(
+        `INSERT INTO backtest_results (
+          signal_timestamp,
+          timestamp_es,
+          symbol,
+          timeframe,
+          tipo,
+          retracement,
+          tp_percent,
+          sl_mode,
+          entry_price,
+          tp_price,
+          sl_price,
+          result,
+          touched_tp,
+          touched_sl,
+          hour_segment,
+          is_entry,
+          created_at
+        ) VALUES (
+          $1,$2,$3,$4,$5,$6,$7,$8,null,null,null,'NO_ENTRY',false,false,$9,false,NOW()
+        )`,
+        [
+          s.timestamp,
+          s.timestamp_es,
+          symbol,
+          timeframe,
+          s.tipo,
+          retracement,
+          tpPercent,
+          slMode,
+          hourSegment
+        ]
+      );
 
-  const { tp, sl } = computeTargets(
-    s.tipo,
-    entryPrice,
-    tpPercent,
-    slMode,
-    third
-  );
+      continue;
+    }
 
-  const nextCandles = await getNextCandles(symbol, timeframe, fourth.timestamp);
+    // ENTRADA REAL
+    entries++;
 
-  const { touchedTP, touchedSL, outcome } = checkTouches(
-    s.tipo,
-    nextCandles,
-    tp,
-    sl
-  );
-
-  if (outcome === "WIN") wins++;
-  else if (outcome === "LOSS") losses++;
-  else neutrals++;
-
-  const hourSegment = getHourSegment(new Date(s.timestamp_es));
-
-  await db.query(
-    `INSERT INTO backtest_results (
-      signal_timestamp,
-      timestamp_es,
-      symbol,
-      timeframe,
-      tipo,
-      retracement,
-      tp_percent,
-      sl_mode,
-      entry_price,
-      tp_price,
-      sl_price,
-      result,
-      touched_tp,
-      touched_sl,
-      hour_segment,
-      is_entry,
-      created_at
-    ) VALUES (
-      $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,true,NOW()
-    )`,
-    [
-      s.timestamp,
-      s.timestamp_es,
-      symbol,
-      timeframe,
+    const { tp, sl } = computeTargets(
       s.tipo,
-      retracement,
+      entryPrice,
       tpPercent,
       slMode,
-      entryPrice,
+      third
+    );
+
+    const nextCandles = await getNextCandles(symbol, timeframe, fourth.timestamp);
+
+    const { touchedTP, touchedSL, outcome } = checkTouches(
+      s.tipo,
+      nextCandles,
       tp,
-      sl,
-      outcome,
-      touchedTP,
-      touchedSL,
-      hourSegment
-    ]
-  );
-}
+      sl
+    );
 
+    if (outcome === "WIN") wins++;
+    else if (outcome === "LOSS") losses++;
+    else neutrals++;
 
+    const hourSegment = getHourSegment(new Date(s.timestamp_es));
+
+    await db.query(
+      `INSERT INTO backtest_results (
+        signal_timestamp,
+        timestamp_es,
+        symbol,
+        timeframe,
+        tipo,
+        retracement,
+        tp_percent,
+        sl_mode,
+        entry_price,
+        tp_price,
+        sl_price,
+        result,
+        touched_tp,
+        touched_sl,
+        hour_segment,
+        is_entry,
+        created_at
+      ) VALUES (
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,true,NOW()
+      )`,
+      [
+        s.timestamp,
+        s.timestamp_es,
+        symbol,
+        timeframe,
+        s.tipo,
+        retracement,
+        tpPercent,
+        slMode,
+        entryPrice,
+        tp,
+        sl,
+        outcome,
+        touchedTP,
+        touchedSL,
+        hourSegment
+      ]
+    );
+
+    // Detall només per entrades reals
     details.push({
       timestamp_es: s.timestamp_es,
       ts: s.timestamp,
@@ -270,8 +275,8 @@ export async function fetchStats() {
 }
 
 function getHourSegment(date) {
-  const hour = date.getHours();   // hora local del timestamp_es
-  const day = date.getDay();      // 0 = diumenge, 6 = dissabte
+  const hour = date.getHours();
+  const day = date.getDay(); // 0 = diumenge, 6 = dissabte
 
   // Cap de setmana
   if (day === 6) return "dissabte";
