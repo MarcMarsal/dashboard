@@ -58,7 +58,9 @@ export async function executeBacktest({
     if (!third || !second || !first || !fourth) {
       noEntries++;
 // NO ENTRY → REGISTRE
-    const hourSegment = getHourSegment(new Date(s.timestamp));
+   
+    const hourSegment = getHourSegment(new Date(s.timestamp_es));
+
 
     await db.query(
       `INSERT INTO backtest_results (
@@ -258,9 +260,8 @@ export async function fetchStats() {
 }
 
 function getHourSegment(date) {
-  // Convertim UTC → CET
-  const hour = date.getUTCHours() + 1;
-  const day = date.getUTCDay(); // 0 = diumenge, 6 = dissabte
+  const hour = date.getHours();   // hora local del timestamp_es
+  const day = date.getDay();      // 0 = diumenge, 6 = dissabte
 
   // Cap de setmana
   if (day === 6) return "dissabte";
