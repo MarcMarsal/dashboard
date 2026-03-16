@@ -275,3 +275,4 @@ function getHourSegment(date) {
   if (hour >= 18 && hour < 24) return "nit_eu";
   return "nit_matinada";
 }
+
