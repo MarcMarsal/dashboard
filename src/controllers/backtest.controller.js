@@ -53,3 +53,21 @@ export async function fetchBacktestResults(req, res) {
   res.json(r.rows);
 }
 
+export async function fetchSegmentReport(req, res) {
+  const r = await db.query(`
+    SELECT hour_segment,
+           COUNT(*) AS total_signals,
+           SUM(CASE WHEN is_entry THEN 1 ELSE 0 END) AS entries,
+           SUM(CASE WHEN NOT is_entry THEN 1 ELSE 0 END) AS no_entries,
+           SUM(CASE WHEN result = 'WIN' THEN 1 ELSE 0 END) AS wins,
+           SUM(CASE WHEN result = 'LOSS' THEN 1 ELSE 0 END) AS losses,
+           SUM(CASE WHEN result = 'NEUTRAL' THEN 1 ELSE 0 END) AS neutrals
+    FROM backtest_results
+    GROUP BY hour_segment
+    ORDER BY hour_segment;
+  `);
+
+  res.json(r.rows);
+}
+
+
