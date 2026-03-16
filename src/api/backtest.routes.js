@@ -8,5 +8,7 @@ router.post("/run", runBacktest);
 
 router.get("/stats", getStats);
 
+router.get("/backtest/results", fetchBacktestResults);
+
 
 export default router;
