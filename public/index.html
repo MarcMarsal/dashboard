@@ -189,6 +189,8 @@
         <thead>
           <tr>
             <th>Timestamp</th>
+            <th>Entrada?</th>
+
             <th>Tipo</th>
             <th>Entry</th>
             <th>TP</th>
@@ -205,6 +207,8 @@
       html += `
         <tr>
           <td>${r.timestamp_es}</td>
+          <td>${r.is_entry ? "Sí" : "No"}</td>
+
           <td>${r.tipo}</td>
           <td>${r.entry_price ? Number(r.entry_price).toFixed(4) : "-"}</td>
           <td>${r.tp_price ? Number(r.tp_price).toFixed(4) : "-"}</td>
