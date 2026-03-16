@@ -29,3 +29,24 @@ export async function runBacktest(req, res) {
     res.status(500).json({ ok: false, error: "Error executant el backtest" });
   }
 }
+
+export async function fetchBacktestResults(req, res) {
+  const r = await db.query(
+    `SELECT
+        signal_timestamp,
+        timestamp_es,
+        symbol,
+        timeframe,
+        tipo,
+        entry_price,
+        tp_price,
+        sl_price,
+        result,
+        touched_tp,
+        touched_sl
+     FROM backtest_results
+     ORDER BY signal_timestamp ASC`
+  );
+
+  res.json(r.rows);
+}
