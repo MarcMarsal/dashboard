@@ -38,92 +38,20 @@ export async function executeBacktest({
   let losses = 0;
   let neutrals = 0;
   const details = [];
+for (const s of signals.rows) {
+  total++;
 
-  for (const s of signals.rows) {
-    total++;
+  const ts3 = s.timestamp;
 
-    const ts3 = s.timestamp;
+  const third = await getThirdCandle(symbol, timeframe, ts3);
+  const second = await getSecondCandle(symbol, timeframe, ts3);
+  const first = await getFirstCandle(symbol, timeframe, ts3);
+  const fourth = await getFourthCandle(symbol, timeframe, ts3);
 
-    const third = await getThirdCandle(symbol, timeframe, ts3);
-    const second = await getSecondCandle(symbol, timeframe, ts3);
-    const first = await getFirstCandle(symbol, timeframe, ts3);
-    const fourth = await getFourthCandle(symbol, timeframe, ts3);
+  if (!third || !second || !first || !fourth) {
+    noEntries++;
 
-    console.log("TS DEBUG", {
-  signalTs: s.timestamp,
-  thirdTs: third.timestamp,
-  fourthTs: fourth.timestamp
-});
-
-    if (!third || !second || !first || !fourth) {
-      noEntries++;
-// NO ENTRY → REGISTRE
-   
     const hourSegment = getHourSegment(new Date(s.timestamp_es));
-
-await db.query(
-  `INSERT INTO backtest_results (
-    signal_timestamp,
-    timestamp_es,
-    symbol,
-    timeframe,
-    tipo,
-    retracement,
-    tp_percent,
-    sl_mode,
-    entry_price,
-    tp_price,
-    sl_price,
-    result,
-    touched_tp,
-    touched_sl,
-    hour_segment,
-    is_entry,
-    created_at
-  ) VALUES (
-    $1,$2,$3,$4,$5,$6,$7,$8,null,null,null,'NO_ENTRY',false,false,$9,false,NOW()
-  )`,
-  [
-    s.timestamp,
-    s.timestamp_es,
-    symbol,
-    timeframe,
-    s.tipo,
-    retracement,   // ara ja no és null
-    tpPercent,     // també és NOT NULL a la teva taula
-    slMode,        // també és NOT NULL
-    hourSegment
-  ]
-);
-
-      
-      continue;
-    }
-
-
-
-  
-
-// --- ENTRADA: retrocés sobre el cos de la 3a vela ---
-const isLong = s.tipo === "MS";
-const body = Math.abs(third.close - third.open);
-const retraceFraction = retracement / 100;
-const retraceAmount = body * retraceFraction;
-
-let entryPrice;
-if (isLong) {
-  // MS: entrada = close 3a - % cos
-  entryPrice = third.close - retraceAmount;
-} else {
-  // ES: entrada = close 3a + % cos
-  entryPrice = third.close + retraceAmount;
-}
-
-const hasEntry = checkEntry(fourth, entryPrice);
-if (!hasEntry) {
-  noEntries++;
-  // NO ENTRY → REGISTRE
-    const hourSegment = getHourSegment(new Date(s.timestamp));
 
     await db.query(
       `INSERT INTO backtest_results (
@@ -132,48 +60,117 @@ if (!hasEntry) {
         symbol,
         timeframe,
         tipo,
+        retracement,
+        tp_percent,
+        sl_mode,
+        entry_price,
+        tp_price,
+        sl_price,
         result,
         touched_tp,
         touched_sl,
         hour_segment,
         is_entry,
         created_at
-      ) VALUES ($1,$2,$3,$4,$5,'NO_ENTRY',false,false,$6,false,NOW())`,
+      ) VALUES (
+        $1,$2,$3,$4,$5,$6,$7,$8,null,null,null,'NO_ENTRY',false,false,$9,false,NOW()
+      )`,
       [
         s.timestamp,
         s.timestamp_es,
         symbol,
         timeframe,
         s.tipo,
+        retracement,
+        tpPercent,
+        slMode,
         hourSegment
       ]
     );
-  continue;
-}   entries++;
 
-    const { tp, sl } = computeTargets(
-      s.tipo,
-      entryPrice,
-      tpPercent,
-      slMode,
-      third
+    continue;
+  }
+
+  const isLong = s.tipo === "MS";
+  const body = Math.abs(third.close - third.open);
+  const retraceFraction = retracement / 100;
+  const retraceAmount = body * retraceFraction;
+
+  let entryPrice;
+  if (isLong) {
+    entryPrice = third.close - retraceAmount;
+  } else {
+    entryPrice = third.close + retraceAmount;
+  }
+
+  const hasEntry = checkEntry(fourth, entryPrice);
+  if (!hasEntry) {
+    noEntries++;
+
+    const hourSegment = getHourSegment(new Date(s.timestamp_es));
+
+    await db.query(
+      `INSERT INTO backtest_results (
+        signal_timestamp,
+        timestamp_es,
+        symbol,
+        timeframe,
+        tipo,
+        retracement,
+        tp_percent,
+        sl_mode,
+        entry_price,
+        tp_price,
+        sl_price,
+        result,
+        touched_tp,
+        touched_sl,
+        hour_segment,
+        is_entry,
+        created_at
+      ) VALUES (
+        $1,$2,$3,$4,$5,$6,$7,$8,null,null,null,'NO_ENTRY',false,false,$9,false,NOW()
+      )`,
+      [
+        s.timestamp,
+        s.timestamp_es,
+        symbol,
+        timeframe,
+        s.tipo,
+        retracement,
+        tpPercent,
+        slMode,
+        hourSegment
+      ]
     );
 
-    const nextCandles = await getNextCandles(symbol, timeframe, fourth.timestamp);
-    console.log("NEXT CANDLES COUNT", nextCandles.length);
+    continue;
+  }
 
-const { touchedTP, touchedSL, outcome } = checkTouches(
-  s.tipo,
-  nextCandles,
-  tp,
-  sl
-);
+  entries++;
 
-    if (outcome === "WIN") wins++;
-    else if (outcome === "LOSS") losses++;
-    else neutrals++;
+  const { tp, sl } = computeTargets(
+    s.tipo,
+    entryPrice,
+    tpPercent,
+    slMode,
+    third
+  );
 
-   const hourSegment = getHourSegment(new Date(s.timestamp));
+  const nextCandles = await getNextCandles(symbol, timeframe, fourth.timestamp);
+
+  const { touchedTP, touchedSL, outcome } = checkTouches(
+    s.tipo,
+    nextCandles,
+    tp,
+    sl
+  );
+
+  if (outcome === "WIN") wins++;
+  else if (outcome === "LOSS") losses++;
+  else neutrals++;
+
+  const hourSegment = getHourSegment(new Date(s.timestamp_es));
 
   await db.query(
     `INSERT INTO backtest_results (
@@ -215,6 +212,8 @@ const { touchedTP, touchedSL, outcome } = checkTouches(
       hourSegment
     ]
   );
+}
+
 
     details.push({
       timestamp_es: s.timestamp_es,
