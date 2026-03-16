@@ -49,7 +49,7 @@ export async function executeBacktest({
     const first = await getFirstCandle(symbol, timeframe, ts3);
     const fourth = await getFourthCandle(symbol, timeframe, ts3);
 
-    const hourSegment = getHourSegment(new Date(s.timestamp_es));
+    const hourSegment = getHourSegment(parseTimestampEs(s.timestamp_es));
 
     // -------------------------------
     // NO ENTRY: falta alguna candle
@@ -292,6 +292,12 @@ function getHourSegment(date) {
   if (hour >= 16 && hour < 18) return "tarda_eu";
   if (hour >= 18 && hour < 24) return "nit_eu";
   return "nit_matinada";
+}
+
+function parseTimestampEs(ts) {
+  const [datePart, timePart] = ts.split(" ");
+  const [day, month, year] = datePart.split("/");
+  return new Date(`${year}-${month}-${day}T${timePart}`);
 }
 
 
