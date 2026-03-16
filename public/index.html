@@ -158,6 +158,60 @@
   // opcional: carregar stats en entrar
   loadStats();
 </script>
+<script>
+  document.getElementById("showLines").addEventListener("change", async (e) => {
+    const container = document.getElementById("linesTable");
 
+    if (!e.target.checked) {
+      container.innerHTML = "";
+      return;
+    }
+
+    const res = await fetch("/backtest/results");
+    const rows = await res.json();
+
+    if (!rows.length) {
+      container.innerHTML = "<p>No hi ha dades.</p>";
+      return;
+    }
+
+    let html = `
+      <table border="1" cellpadding="5" cellspacing="0">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Tipo</th>
+            <th>Entry</th>
+            <th>TP</th>
+            <th>SL</th>
+            <th>Resultat</th>
+            <th>Touched TP</th>
+            <th>Touched SL</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    for (const r of rows) {
+      html += `
+        <tr>
+          <td>${r.timestamp_es}</td>
+          <td>${r.tipo}</td>
+          <td>${Number(r.entry_price).toFixed(4)}</td>
+          <td>${Number(r.tp_price).toFixed(4)}</td>
+          <td>${Number(r.sl_price).toFixed(4)}</td>
+          <td>${r.result}</td>
+          <td>${r.touched_tp ? "Yes" : "No"}</td>
+          <td>${r.touched_sl ? "Yes" : "No"}</td>
+        </tr>
+      `;
+    }
+
+    html += "</tbody></table>";
+    container.innerHTML = html;
+  });
+</script>
+
+  
 </body>
 </html>
