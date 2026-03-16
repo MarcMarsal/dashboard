@@ -32,27 +32,6 @@ export async function runBacktest(req, res) {
   }
 }
 
-export async function fetchBacktestResults(req, res) {
-  const r = await db.query(
-    `SELECT
-        signal_timestamp,
-        timestamp_es,
-        symbol,
-        timeframe,
-        tipo,
-        entry_price,
-        tp_price,
-        sl_price,
-        result,
-        touched_tp,
-        touched_sl
-     FROM backtest_results
-     ORDER BY signal_timestamp ASC`
-  );
-
-  res.json(r.rows);
-}
-
 export async function fetchSegmentReport(req, res) {
   const r = await db.query(`
     SELECT hour_segment,
@@ -70,4 +49,26 @@ export async function fetchSegmentReport(req, res) {
   res.json(r.rows);
 }
 
+export async function fetchBacktestResults(req, res) {
+  const r = await db.query(`
+    SELECT
+      signal_timestamp,
+      timestamp_es,
+      symbol,
+      timeframe,
+      tipo,
+      entry_price,
+      tp_price,
+      sl_price,
+      result,
+      touched_tp,
+      touched_sl,
+      hour_segment,
+      is_entry
+    FROM backtest_results
+    ORDER BY signal_timestamp ASC
+  `);
+
+  res.json(r.rows);
+}
 
