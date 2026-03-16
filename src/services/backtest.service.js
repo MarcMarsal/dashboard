@@ -207,3 +207,22 @@ export async function fetchStats() {
     winrate
   };
 }
+
+function getHourSegment(date) {
+  // Convertim UTC → CET
+  const hour = date.getUTCHours() + 1;
+  const day = date.getUTCDay(); // 0 = diumenge, 6 = dissabte
+
+  // Cap de setmana
+  if (day === 6) return "dissabte";
+  if (day === 0 && hour < 18) return "diumenge_mati";
+  if (day === 0 && hour >= 18) return "diumenge_tarda";
+
+  // Dies laborables
+  if (hour >= 9 && hour < 12) return "mati_eu";
+  if (hour >= 12 && hour < 14) return "migdia_eu";
+  if (hour >= 14 && hour < 16) return "pre_ws";
+  if (hour >= 16 && hour < 18) return "tarda_eu";
+  if (hour >= 18 && hour < 24) return "nit_eu";
+  return "nit_matinada";
+}
