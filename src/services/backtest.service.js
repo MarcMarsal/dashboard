@@ -61,30 +61,41 @@ export async function executeBacktest({
    
     const hourSegment = getHourSegment(new Date(s.timestamp_es));
 
+await db.query(
+  `INSERT INTO backtest_results (
+    signal_timestamp,
+    timestamp_es,
+    symbol,
+    timeframe,
+    tipo,
+    retracement,
+    tp_percent,
+    sl_mode,
+    entry_price,
+    tp_price,
+    sl_price,
+    result,
+    touched_tp,
+    touched_sl,
+    hour_segment,
+    is_entry,
+    created_at
+  ) VALUES (
+    $1,$2,$3,$4,$5,$6,$7,$8,null,null,null,'NO_ENTRY',false,false,$9,false,NOW()
+  )`,
+  [
+    s.timestamp,
+    s.timestamp_es,
+    symbol,
+    timeframe,
+    s.tipo,
+    retracement,   // ara ja no és null
+    tpPercent,     // també és NOT NULL a la teva taula
+    slMode,        // també és NOT NULL
+    hourSegment
+  ]
+);
 
-    await db.query(
-      `INSERT INTO backtest_results (
-        signal_timestamp,
-        timestamp_es,
-        symbol,
-        timeframe,
-        tipo,
-        result,
-        touched_tp,
-        touched_sl,
-        hour_segment,
-        is_entry,
-        created_at
-      ) VALUES ($1,$2,$3,$4,$5,'NO_ENTRY',false,false,$6,false,NOW())`,
-      [
-        s.timestamp,
-        s.timestamp_es,
-        symbol,
-        timeframe,
-        s.tipo,
-        hourSegment
-      ]
-    );
       
       continue;
     }
