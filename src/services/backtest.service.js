@@ -294,5 +294,4 @@ function getHourSegment(date) {
   return "nit_matinada";
 }
 
-}
 
