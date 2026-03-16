@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import { fetchBacktestResults } from "./controllers/backtest.controller.js";
 
 import backtestRoutes from "./api/backtest.routes.js";
 
@@ -13,5 +14,8 @@ app.use(express.static("public"));
 
 // 👉 Després les rutes API
 app.use("/backtest", backtestRoutes);
+
+app.get("/backtest/results", fetchBacktestResults);
+
 
 export default app;
