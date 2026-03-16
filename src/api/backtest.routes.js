@@ -10,6 +10,7 @@ router.post("/run", runBacktest);
 router.get("/stats", getStats);
 
 router.get("/backtest/results", fetchBacktestResults);
+router.get("/backtest/report", fetchSegmentReport);
 
 
 export default router;
