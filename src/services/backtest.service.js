@@ -31,14 +31,6 @@ export async function executeBacktest({
     [symbol, timeframe, start, end]
   );
 
-  //console.log("SIGNALS DEBUG:", {
-  //  symbol,
-  //  timeframe,
-  //  start,
-  //  end,
-  //  count: signals.rows.length
-  //});
-
   let total = 0;
   let entries = 0;
   let noEntries = 0;
@@ -65,6 +57,33 @@ export async function executeBacktest({
 
     if (!third || !second || !first || !fourth) {
       noEntries++;
+// NO ENTRY → REGISTRE
+    const hourSegment = getHourSegment(new Date(s.timestamp));
+
+    await db.query(
+      `INSERT INTO backtest_results (
+        signal_timestamp,
+        timestamp_es,
+        symbol,
+        timeframe,
+        tipo,
+        result,
+        touched_tp,
+        touched_sl,
+        hour_segment,
+        is_entry,
+        created_at
+      ) VALUES ($1,$2,$3,$4,$5,'NO_ENTRY',false,false,$6,false,NOW())`,
+      [
+        s.timestamp,
+        s.timestamp_es,
+        symbol,
+        timeframe,
+        s.tipo,
+        hourSegment
+      ]
+    );
+      
       continue;
     }
 
@@ -74,8 +93,6 @@ export async function executeBacktest({
 
 // --- ENTRADA: retrocés sobre el cos de la 3a vela ---
 const isLong = s.tipo === "MS";
-
-// --- ENTRADA: retrocés sobre el cos de la 3a vela ---
 const body = Math.abs(third.close - third.open);
 const retraceFraction = retracement / 100;
 const retraceAmount = body * retraceFraction;
@@ -89,10 +106,35 @@ if (isLong) {
   entryPrice = third.close + retraceAmount;
 }
 
-
 const hasEntry = checkEntry(fourth, entryPrice);
 if (!hasEntry) {
   noEntries++;
+  // NO ENTRY → REGISTRE
+    const hourSegment = getHourSegment(new Date(s.timestamp));
+
+    await db.query(
+      `INSERT INTO backtest_results (
+        signal_timestamp,
+        timestamp_es,
+        symbol,
+        timeframe,
+        tipo,
+        result,
+        touched_tp,
+        touched_sl,
+        hour_segment,
+        is_entry,
+        created_at
+      ) VALUES ($1,$2,$3,$4,$5,'NO_ENTRY',false,false,$6,false,NOW())`,
+      [
+        s.timestamp,
+        s.timestamp_es,
+        symbol,
+        timeframe,
+        s.tipo,
+        hourSegment
+      ]
+    );
   continue;
 }   entries++;
 
@@ -118,41 +160,48 @@ const { touchedTP, touchedSL, outcome } = checkTouches(
     else if (outcome === "LOSS") losses++;
     else neutrals++;
 
-    await db.query(
-      `INSERT INTO backtest_results (
-        signal_timestamp,
-        timestamp_es,
-        symbol,
-        timeframe,
-        tipo,
-        retracement,
-        tp_percent,
-        sl_mode,
-        entry_price,
-        tp_price,
-        sl_price,
-        result,
-        touched_tp,
-        touched_sl,
-        created_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW())`,
-      [
-        s.timestamp,
-        s.timestamp_es,
-        symbol,
-        timeframe,
-        s.tipo,
-        retracement,
-        tpPercent,
-        slMode,
-        entryPrice,
-        tp,
-        sl,
-        outcome,
-        touchedTP,
-        touchedSL
-      ]
-    );
+   const hourSegment = getHourSegment(new Date(s.timestamp));
+
+  await db.query(
+    `INSERT INTO backtest_results (
+      signal_timestamp,
+      timestamp_es,
+      symbol,
+      timeframe,
+      tipo,
+      retracement,
+      tp_percent,
+      sl_mode,
+      entry_price,
+      tp_price,
+      sl_price,
+      result,
+      touched_tp,
+      touched_sl,
+      hour_segment,
+      is_entry,
+      created_at
+    ) VALUES (
+      $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,true,NOW()
+    )`,
+    [
+      s.timestamp,
+      s.timestamp_es,
+      symbol,
+      timeframe,
+      s.tipo,
+      retracement,
+      tpPercent,
+      slMode,
+      entryPrice,
+      tp,
+      sl,
+      outcome,
+      touchedTP,
+      touchedSL,
+      hourSegment
+    ]
+  );
 
     details.push({
       timestamp_es: s.timestamp_es,
