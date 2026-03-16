@@ -8,11 +8,9 @@ import { fetchSegmentReport } from "../controllers/backtest.controller.js";
 const router = Router();
 
 router.post("/run", runBacktest);
-
 router.get("/stats", getStats);
-
-router.get("/backtest/results", fetchBacktestResults);
-router.get("/backtest/report", fetchSegmentReport);
+router.get("/results", fetchBacktestResults);
+router.get("/report", fetchSegmentReport);
 
 
 export default router;
