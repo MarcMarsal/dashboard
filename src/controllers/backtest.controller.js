@@ -1,5 +1,7 @@
 import { executeBacktest } from "../services/backtest.service.js";
 import { fetchStats } from "../services/backtest.service.js";
+import db from "../db.js";
+
 
 export async function getStats(req, res) {
   try {
