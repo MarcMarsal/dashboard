@@ -73,6 +73,14 @@
     <option value="symmetric">Simètric</option>
   </select>
 </div>
+<label>
+  <input
+    type="checkbox"
+    checked={showLines}
+    onChange={() => setShowLines(!showLines)}
+  />
+  Show lines
+</label>
 
   <button onclick="runBacktest()">Executar Backtest</button>
 
