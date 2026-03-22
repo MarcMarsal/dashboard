@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <title>Dashboard Backtest</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
   <style>
     body { font-family: Arial; padding: 20px; }
     h1 { margin-bottom: 10px; }
@@ -298,6 +299,7 @@ async function loadSegmentReport() {
 
   html += "</tbody></table>";
   document.getElementById("segmentReport").innerHTML = html;
+  document.getElementById("segmentReport").innerHTML += "<div id='heatmapContainer'></div>";
 }
 
   // --------------------------------------------------
@@ -372,7 +374,9 @@ async function loadWeeklyHeatmap() {
 
   html += "</tbody></table>";
 
-  document.getElementById("segmentReport").innerHTML += html;
+  //document.getElementById("segmentReport").innerHTML += html;
+  document.getElementById("heatmapContainer").innerHTML = html;
+
 }
 </script>
   
