@@ -98,6 +98,29 @@
 
  <script>
   let chart;
+  // --- AFEGIR AQUI ---
+  function getFranja(hour) {
+    if (hour >= 9 && hour < 12) return "mati_eu";
+    if (hour >= 12 && hour < 14) return "migdia_eu";
+    if (hour >= 14 && hour < 16) return "pre_ws";
+    if (hour >= 16 && hour < 18) return "tarda_eu";
+    if (hour >= 18 && hour < 24) return "nit_eu";
+    return "nit_matinada";
+  }
+
+  function getCellColor(alerts, wins, loses) {
+    if (alerts === 0) return "#e0e0e0";
+
+    const total = wins + loses;
+    const winrate = total > 0 ? (wins / total) * 100 : 0;
+
+    if (winrate >= 70) return "#4caf50";
+    if (winrate >= 60) return "#81c784";
+    if (winrate >= 50) return "#fff176";
+    if (winrate >= 40) return "#ffb74d";
+    return "#e57373";
+  }
+  // --- FI DE L’AFEGIT ---
 
   async function loadStats() {
     const res = await fetch("/backtest/stats");
@@ -274,6 +297,81 @@ async function loadSegmentReport() {
 
   html += "</tbody></table>";
   document.getElementById("segmentReport").innerHTML = html;
+}
+
+  // --------------------------------------------------
+// NOVA TAULA: ACTIVITAT PER DIA I FRANJA (1 SETMANA)
+// --------------------------------------------------
+
+async function loadWeeklyHeatmap() {
+  const period = document.getElementById("period").value;
+  if (period !== "1w") return;
+
+  const res = await fetch("/backtest/results");
+  const rows = await res.json();
+
+  if (!rows.length) return;
+
+  const avui = dayjs();
+  const dies = [];
+  for (let i = 7; i >= 0; i--) {
+    dies.push(avui.subtract(i, "day").format("DD/MM"));
+  }
+
+  const franges = [
+    "mati_eu",
+    "migdia_eu",
+    "pre_ws",
+    "tarda_eu",
+    "nit_eu",
+    "nit_matinada"
+  ];
+
+  const taula = {};
+  franges.forEach(f => {
+    taula[f] = {};
+    dies.forEach(d => {
+      taula[f][d] = { alerts: 0, wins: 0, loses: 0 };
+    });
+  });
+
+  rows.forEach(r => {
+    const date = dayjs(r.timestamp_es, "DD/MM/YYYY HH:mm:ss");
+    const dia = date.format("DD/MM");
+    const franja = r.hour_segment;
+
+    if (dies.includes(dia) && franges.includes(franja)) {
+      taula[franja][dia].alerts++;
+      if (r.result === "WIN") taula[franja][dia].wins++;
+      if (r.result === "LOSS") taula[franja][dia].loses++;
+    }
+  });
+
+  let html = `
+    <h2>Heatmap última setmana</h2>
+    <table border="1" cellpadding="5" cellspacing="0" style="text-align:center;">
+      <thead>
+        <tr>
+          <th>Franja</th>
+          ${dies.map(d => `<th>${d}</th>`).join("")}
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  franges.forEach(f => {
+    html += `<tr><td><b>${f}</b></td>`;
+    dies.forEach(d => {
+      const cell = taula[f][d];
+      const color = getCellColor(cell.alerts, cell.wins, cell.loses);
+      html += `<td style="background:${color};">${cell.alerts} / ${cell.wins} / ${cell.loses}</td>`;
+    });
+    html += `</tr>`;
+  });
+
+  html += "</tbody></table>";
+
+  document.getElementById("segmentReport").innerHTML += html;
 }
 </script>
   
