@@ -305,7 +305,7 @@ async function loadSegmentReport() {
   document.getElementById("segmentReport").innerHTML = html;
   document.getElementById("segmentReport").innerHTML += "<div id='heatmapContainer'></div>";
 
-  loadWeeklyHeatmap();
+  //loadWeeklyHeatmap();
 }
 
   // --------------------------------------------------
@@ -362,6 +362,7 @@ async function loadWeeklyHeatmap() {
       if (r.result === "WIN") taula[franja][dia].wins++;
       if (r.result === "LOSS") taula[franja][dia].loses++;
     }
+     console.log("bucle:", dies, dia, franges, franja); 
   });
 
   console.log("HEATMAP TAULA:", taula); 
