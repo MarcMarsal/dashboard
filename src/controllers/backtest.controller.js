@@ -74,9 +74,15 @@ export async function fetchBacktestResults(req, res) {
       WHERE symbol = $1
         AND timeframe = $2
         AND heatmap_segment IS NOT NULL
-        AND to_timestamp(timestamp_es, 'DD/MM/YYYY HH24:MI')
-              BETWEEN NOW() - INTERVAL '7 days' AND NOW()
-      ORDER BY to_timestamp(timestamp_es, 'DD/MM/YYYY HH24:MI') ASC
+        AND COALESCE(
+              to_timestamp(timestamp_es, 'DD/MM/YYYY HH24:MI:SS'),
+              to_timestamp(timestamp_es, 'DD/MM/YYYY HH24:MI')
+            )
+            BETWEEN NOW() - INTERVAL '7 days' AND NOW()
+      ORDER BY COALESCE(
+              to_timestamp(timestamp_es, 'DD/MM/YYYY HH24:MI:SS'),
+              to_timestamp(timestamp_es, 'DD/MM/YYYY HH24:MI')
+            ) ASC
       `,
       [symbol, timeframe]
     );
@@ -87,4 +93,3 @@ export async function fetchBacktestResults(req, res) {
     res.status(500).json({ error: "Error carregant resultats" });
   }
 }
-
