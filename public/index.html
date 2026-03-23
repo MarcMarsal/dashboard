@@ -318,6 +318,8 @@ async function loadWeeklyHeatmap() {
   const res = await fetch(`/backtest/results?symbol=${symbol}&timeframe=${timeframe}`);
   const rows = await res.json();
 
+  console.log("HEATMAP ROWS:", rows); 
+  
   if (!rows.length) return;
 
   const avui = dayjs();
