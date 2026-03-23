@@ -349,7 +349,8 @@ async function loadWeeklyHeatmap() {
     //const date = dayjs(r.timestamp_es, "DD/MM/YYYY HH:mm");
     const date = dayjs(r.timestamp_es.trim(), ["DD/MM/YYYY HH:mm", "DD/MM/YYYY HH:mm:ss"]);
     const dia = date.format("DD/MM");
-    const franja = r.heatmap_segment;
+    //const franja = r.heatmap_segment;
+    const franja = getFranja(date.hour()); 
 
     if (dies.includes(dia) && franges.includes(franja)) {
       taula[franja][dia].alerts++;
