@@ -50,6 +50,8 @@ export async function executeBacktest({
     const fourth = await getFourthCandle(symbol, timeframe, ts3);
 
     const hourSegment = getHourSegment(parseTimestampEs(s.timestamp_es));
+    const dateObj = parseTimestampEs(s.timestamp_es);
+    const heatmapSegment = getFranja(dateObj.getHours());
 
     // -------------------------------
     // NO ENTRY: falta alguna candle
@@ -57,41 +59,41 @@ export async function executeBacktest({
     if (!third || !second || !first || !fourth) {
       noEntries++;
 
-      await db.query(
-        `INSERT INTO backtest_results (
-          signal_timestamp,
-          timestamp_es,
-          symbol,
-          timeframe,
-          tipo,
-          retracement,
-          tp_percent,
-          sl_mode,
-          entry_price,
-          tp_price,
-          sl_price,
-          result,
-          touched_tp,
-          touched_sl,
-          hour_segment,
-          is_entry,
-          created_at
-        ) VALUES (
-          $1,$2,$3,$4,$5,$6,$7,$8,0,0,0,'NO_ENTRY',false,false,$9,false,NOW()
-        )`,
-        [
-          s.timestamp,
-          s.timestamp_es,
-          symbol,
-          timeframe,
-          s.tipo,
-          retracement,
-          tpPercent,
-          slMode,
-          hourSegment
-        ]
-      );
-
+      await db.query(`
+  INSERT INTO backtest_results (
+    signal_timestamp,
+    timestamp_es,
+    symbol,
+    timeframe,
+    tipo,
+    retracement,
+    tp_percent,
+    sl_mode,
+    entry_price,
+    tp_price,
+    sl_price,
+    result,
+    touched_tp,
+    touched_sl,
+    hour_segment,
+    heatmap_segment,
+    is_entry,
+    created_at
+  ) VALUES (
+    $1,$2,$3,$4,$5,$6,$7,$8,0,0,0,'NO_ENTRY',false,false,$9,$10,false,NOW()
+  )
+`, [
+  s.timestamp,
+  s.timestamp_es,
+  symbol,
+  timeframe,
+  s.tipo,
+  retracement,
+  tpPercent,
+  slMode,
+  hourSegment,
+  heatmapSegment
+]);
       continue;
     }
 
@@ -118,40 +120,47 @@ export async function executeBacktest({
     if (!hasEntry) {
       noEntries++;
 
-      await db.query(
-        `INSERT INTO backtest_results (
-          signal_timestamp,
-          timestamp_es,
-          symbol,
-          timeframe,
-          tipo,
-          retracement,
-          tp_percent,
-          sl_mode,
-          entry_price,
-          tp_price,
-          sl_price,
-          result,
-          touched_tp,
-          touched_sl,
-          hour_segment,
-          is_entry,
-          created_at
-        ) VALUES (
-          $1,$2,$3,$4,$5,$6,$7,$8,0,0,0,'NO_ENTRY',false,false,$9,false,NOW()
-        )`,
-        [
-          s.timestamp,
-          s.timestamp_es,
-          symbol,
-          timeframe,
-          s.tipo,
-          retracement,
-          tpPercent,
-          slMode,
-          hourSegment
-        ]
-      );
+    await db.query(`
+  INSERT INTO backtest_results (
+    signal_timestamp,
+    timestamp_es,
+    symbol,
+    timeframe,
+    tipo,
+    retracement,
+    tp_percent,
+    sl_mode,
+    entry_price,
+    tp_price,
+    sl_price,
+    result,
+    touched_tp,
+    touched_sl,
+    hour_segment,
+    heatmap_segment,
+    is_entry,
+    created_at
+  ) VALUES (
+    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,true,NOW()
+  )
+`, [
+  s.timestamp,
+  s.timestamp_es,
+  symbol,
+  timeframe,
+  s.tipo,
+  retracement,
+  tpPercent,
+  slMode,
+  entryPrice,
+  tp,
+  sl,
+  outcome,
+  touchedTP,
+  touchedSL,
+  hourSegment,
+  heatmapSegment
+]);
 
       continue;
     }
@@ -276,6 +285,15 @@ export async function fetchStats() {
     neutrals: Number(s.neutrals),
     winrate
   };
+}
+
+function getFranja(hour) {
+  if (hour >= 9 && hour < 12) return "mati_eu";
+  if (hour >= 12 && hour < 14) return "migdia_eu";
+  if (hour >= 14 && hour < 16) return "pre_ws";
+  if (hour >= 16 && hour < 18) return "tarda_eu";
+  if (hour >= 18 && hour < 24) return "nit_eu";
+  return "nit_matinada";
 }
 
 function getHourSegment(date) {
