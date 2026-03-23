@@ -312,7 +312,10 @@ async function loadWeeklyHeatmap() {
   const period = document.getElementById("period").value;
   if (period !== "1w") return;
 
-  const res = await fetch("/backtest/results");
+  const symbol = document.getElementById("symbol").value;
+  const timeframe = document.getElementById("timeframe").value;
+
+  const res = await fetch(`/backtest/results?symbol=${symbol}&timeframe=${timeframe}`);
   const rows = await res.json();
 
   if (!rows.length) return;
