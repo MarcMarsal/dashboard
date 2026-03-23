@@ -60,40 +60,41 @@ export async function executeBacktest({
       noEntries++;
 
       await db.query(`
-  INSERT INTO backtest_results (
-    signal_timestamp,
-    timestamp_es,
-    symbol,
-    timeframe,
-    tipo,
-    retracement,
-    tp_percent,
-    sl_mode,
-    entry_price,
-    tp_price,
-    sl_price,
-    result,
-    touched_tp,
-    touched_sl,
-    hour_segment,
-    heatmap_segment,
-    is_entry,
-    created_at
-  ) VALUES (
-    $1,$2,$3,$4,$5,$6,$7,$8,0,0,0,'NO_ENTRY',false,false,$9,$10,false,NOW()
-  )
-`, [
-  s.timestamp,
-  s.timestamp_es,
-  symbol,
-  timeframe,
-  s.tipo,
-  retracement,
-  tpPercent,
-  slMode,
-  hourSegment,
-  heatmapSegment
-]);
+        INSERT INTO backtest_results (
+          signal_timestamp,
+          timestamp_es,
+          symbol,
+          timeframe,
+          tipo,
+          retracement,
+          tp_percent,
+          sl_mode,
+          entry_price,
+          tp_price,
+          sl_price,
+          result,
+          touched_tp,
+          touched_sl,
+          hour_segment,
+          heatmap_segment,
+          is_entry,
+          created_at
+        ) VALUES (
+          $1,$2,$3,$4,$5,$6,$7,$8,0,0,0,'NO_ENTRY',false,false,$9,$10,false,NOW()
+        )
+      `, [
+        s.timestamp,
+        s.timestamp_es,
+        symbol,
+        timeframe,
+        s.tipo,
+        retracement,
+        tpPercent,
+        slMode,
+        hourSegment,
+        heatmapSegment
+      ]);
+
       continue;
     }
 
@@ -120,47 +121,41 @@ export async function executeBacktest({
     if (!hasEntry) {
       noEntries++;
 
-    await db.query(`
-  INSERT INTO backtest_results (
-    signal_timestamp,
-    timestamp_es,
-    symbol,
-    timeframe,
-    tipo,
-    retracement,
-    tp_percent,
-    sl_mode,
-    entry_price,
-    tp_price,
-    sl_price,
-    result,
-    touched_tp,
-    touched_sl,
-    hour_segment,
-    heatmap_segment,
-    is_entry,
-    created_at
-  ) VALUES (
-    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,true,NOW()
-  )
-`, [
-  s.timestamp,
-  s.timestamp_es,
-  symbol,
-  timeframe,
-  s.tipo,
-  retracement,
-  tpPercent,
-  slMode,
-  entryPrice,
-  tp,
-  sl,
-  outcome,
-  touchedTP,
-  touchedSL,
-  hourSegment,
-  heatmapSegment
-]);
+      await db.query(`
+        INSERT INTO backtest_results (
+          signal_timestamp,
+          timestamp_es,
+          symbol,
+          timeframe,
+          tipo,
+          retracement,
+          tp_percent,
+          sl_mode,
+          entry_price,
+          tp_price,
+          sl_price,
+          result,
+          touched_tp,
+          touched_sl,
+          hour_segment,
+          heatmap_segment,
+          is_entry,
+          created_at
+        ) VALUES (
+          $1,$2,$3,$4,$5,$6,$7,$8,0,0,0,'NO_ENTRY',false,false,$9,$10,false,NOW()
+        )
+      `, [
+        s.timestamp,
+        s.timestamp_es,
+        symbol,
+        timeframe,
+        s.tipo,
+        retracement,
+        tpPercent,
+        slMode,
+        hourSegment,
+        heatmapSegment
+      ]);
 
       continue;
     }
@@ -191,49 +186,47 @@ export async function executeBacktest({
     else if (outcome === "LOSS") losses++;
     else neutrals++;
 
-    await db.query(
-     await db.query(
-  `INSERT INTO backtest_results (
-    signal_timestamp,
-    timestamp_es,
-    symbol,
-    timeframe,
-    tipo,
-    retracement,
-    tp_percent,
-    sl_mode,
-    entry_price,
-    tp_price,
-    sl_price,
-    result,
-    touched_tp,
-    touched_sl,
-    hour_segment,
-    heatmap_segment,
-    is_entry,
-    created_at
-  ) VALUES (
-    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,true,NOW()
-  )`,
-  [
-    s.timestamp,      // $1
-    s.timestamp_es,   // $2
-    symbol,           // $3
-    timeframe,        // $4
-    s.tipo,           // $5
-    retracement,      // $6
-    tpPercent,        // $7
-    slMode,           // $8
-    entryPrice,       // $9
-    tp,               // $10
-    sl,               // $11
-    outcome,          // $12
-    touchedTP,        // $13
-    touchedSL,        // $14
-    hourSegment,      // $15
-    heatmapSegment    // $16
-  ]
-);
+    await db.query(`
+      INSERT INTO backtest_results (
+        signal_timestamp,
+        timestamp_es,
+        symbol,
+        timeframe,
+        tipo,
+        retracement,
+        tp_percent,
+        sl_mode,
+        entry_price,
+        tp_price,
+        sl_price,
+        result,
+        touched_tp,
+        touched_sl,
+        hour_segment,
+        heatmap_segment,
+        is_entry,
+        created_at
+      ) VALUES (
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,true,NOW()
+      )
+    `, [
+      s.timestamp,
+      s.timestamp_es,
+      symbol,
+      timeframe,
+      s.tipo,
+      retracement,
+      tpPercent,
+      slMode,
+      entryPrice,
+      tp,
+      sl,
+      outcome,
+      touchedTP,
+      touchedSL,
+      hourSegment,
+      heatmapSegment
+    ]);
 
     // Detall només per entrades reals
     details.push({
