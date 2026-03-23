@@ -339,7 +339,7 @@ async function loadWeeklyHeatmap() {
   });
 
   rows.forEach(r => {
-    const date = dayjs(r.timestamp_es, "DD/MM/YYYY HH:mm:ss");
+    const date = dayjs(r.timestamp_es, "DD/MM/YYYY HH:mm");
     const dia = date.format("DD/MM");
     const franja = r.hour_segment;
 
