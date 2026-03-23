@@ -201,8 +201,12 @@
       return;
     }
 
-    const res = await fetch("/backtest/results");
-    const rows = await res.json();
+   const symbol = document.getElementById("symbol").value;
+  const timeframe = document.getElementById("timeframe").value;
+
+  const res = await fetch(`/backtest/results?symbol=${symbol}&timeframe=${timeframe}`);
+  const rows = await res.json();
+
 
     if (!rows.length) {
       container.innerHTML = "<p>No hi ha dades.</p>";
