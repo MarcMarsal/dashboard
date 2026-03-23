@@ -300,6 +300,8 @@ async function loadSegmentReport() {
   html += "</tbody></table>";
   document.getElementById("segmentReport").innerHTML = html;
   document.getElementById("segmentReport").innerHTML += "<div id='heatmapContainer'></div>";
+
+  loadWeeklyHeatmap();
 }
 
   // --------------------------------------------------
