@@ -69,7 +69,9 @@ async function startPanel() {
 
     if (req.url.startsWith("/")) {
       const rows = await getGridRecommendations();
-      const lastUpdate = new Date().toLocaleString("es-ES");
+      //const lastUpdate = new Date().toLocaleString("es-ES");
+      const lastUpdate = new Date().toLocaleString("es-ES", { timeZone: "Europe/Madrid" });
+
 
       const html = `
       <html>
