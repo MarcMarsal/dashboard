@@ -1,3 +1,5 @@
+// core/calcATR.js
+
 export default function calcATR(candles) {
   const trs = [];
   for (let i = 1; i < candles.length; i++) {
