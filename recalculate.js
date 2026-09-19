@@ -1,8 +1,7 @@
-// recalculate.js
+// src/dashboard/recalculate.js
+import { client } from "../db/client.js";
 
-import db from '../db/index.js';
-
-// --- Càlcul ATR ---
+// --- ATR ---
 function calcATR(candles) {
   const trs = [];
   for (let i = 1; i < candles.length; i++) {
@@ -18,7 +17,7 @@ function calcATR(candles) {
   return trs.reduce((a, b) => a + b, 0) / trs.length;
 }
 
-// --- Càlcul slope ---
+// --- slope ---
 function calcSlope(candles) {
   const n = candles.length;
   const xs = [...Array(n).keys()];
@@ -33,12 +32,12 @@ function calcSlope(candles) {
   return num / den;
 }
 
-// --- Rang FI ---
+// --- rang FI ---
 function calcRangeFI(atr) {
   return atr * 20;
 }
 
-// --- Cel·les FI ---
+// --- cel·les FI ---
 function calcCells(rangeFI) {
   if (rangeFI < 0.5) return 10;
   if (rangeFI < 2) return 12;
@@ -46,39 +45,34 @@ function calcCells(rangeFI) {
   return 18;
 }
 
-// --- Distància FI ---
+// --- distància FI ---
 function calcCellDistance(rangeFI, cells) {
   return rangeFI / cells;
 }
 
-// --- Mode + Score ---
+// --- mode + score ---
 function decideModeAndScore({ atr, slope, volume }) {
   let score = 0;
 
-  // volatilitat útil
   if (atr > 0.001 && atr < 0.05) score += 4;
-
-  // slope baix = rang
   if (Math.abs(slope) < atr * 0.35) score += 4;
-
-  // volum decent
   if (volume > 100000) score += 2;
 
-  const mode = Math.abs(slope) < atr * 0.2 ? 'USDT' : 'CRYPTO';
+  const mode = Math.abs(slope) < atr * 0.2 ? "USDT" : "CRYPTO";
 
   return { mode, score: Math.min(score, 10) };
 }
 
-// --- Funció principal ---
+// --- funció principal ---
 export async function recalcGridRecommendations() {
-  const symbols = await db.query(`
+  const symbols = await client.query(`
     SELECT DISTINCT symbol FROM candles
   `);
 
   for (const row of symbols.rows) {
     const symbol = row.symbol;
 
-    const candles = await db.query(`
+    const candles = await client.query(`
       SELECT * FROM candles
       WHERE symbol = $1 AND timeframe = '15m'
       ORDER BY ts DESC
@@ -97,7 +91,7 @@ export async function recalcGridRecommendations() {
 
     const { mode, score } = decideModeAndScore({ atr, slope, volume });
 
-    await db.query(`
+    await client.query(`
       INSERT INTO grid_recommendations
       (symbol, mode, cells, cell_distance, range, atr, slope, volume, score, updated_at)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW())
@@ -117,4 +111,6 @@ export async function recalcGridRecommendations() {
       rangeFI, atr, slope, volume, score
     ]);
   }
+
+  console.log("Grid recommendations updated");
 }
