@@ -2,13 +2,14 @@
   "name": "fi-grid-dashboard",
   "version": "1.0.0",
   "description": "Dashboard FI per recomanar criptos per gridbots",
-  "main": "server.js",
+  "type": "module",
+  "main": "dashboard.js",
   "scripts": {
-    "start": "node server.js",
-    "recalc": "node core/recalc.js"
+    "start": "node dashboard.js"
   },
   "dependencies": {
-    "pg": "^8.11.0"
+    "pg": "^8.11.0",
+    "node-cron": "^3.0.2"
   },
   "engines": {
     "node": ">=18"
